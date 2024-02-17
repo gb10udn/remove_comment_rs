@@ -38,7 +38,7 @@ fn remove_comment_py(src: &String, targets: Vec<&str>) -> String {
 }
 
 fn remove_docstring_py(src: &String) -> String {
-    let re = Regex::new(r#"\s*?"{3}[\s\S]*?"{3}|'\s*?{3}[\s\S]*?'{3}"#).unwrap();  // INFO: 240218 \s は空白や改行コード。\S はそれ以外。*? は非貪欲マッチ。
+    let re = Regex::new(r#"\s*?"{3}[\s\S]*?"{3}|\s*?'{3}[\s\S]*?'{3}"#).unwrap();  // INFO: 240218 \s は空白や改行コード。\S はそれ以外。*? は非貪欲マッチ。
     let result = re.replace_all(src, "");
     result.to_string()
 }
@@ -98,9 +98,9 @@ mod tests {
                 """
                 return datetime.datetime.now()
             def piyo():
-                """
+                '''
                 the second docstring !!!
-                """
+                '''
                 return 123
         "#;
 
