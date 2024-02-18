@@ -1,13 +1,9 @@
 use regex::Regex;
+use crate::rmc::common;
 
-pub fn remove_comment(src: &String, targets: Vec<&str>) -> String {  // TODO: 240218 ps / vba にも対応すること。(vba を引き抜いて変換して、また、.xlsm に戻すのもいいかも？)
-    let pattern = targets
-        .iter()
-        .map(|keyword| format!(r"\s*?#\s*?{}.*", keyword))  // HACK: 240218 powershell や、VBA と共通部分をくくりだせるようにする。
-        .collect::<Vec<String>>()
-        .join("|");
-    let re = Regex::new(&pattern).unwrap();
-    re.replace_all(src, "").to_string()  // TODO: 240218 削除後に空白のみになった場合、その行を削除する？
+pub fn remove_comment(src: &String, targets: Vec<&str>) -> String {
+    let comment_marker = "#";
+    common::remove_comment(src, targets, comment_marker)
 }
 
 pub fn remove_docstring(src: &String) -> String {  // HACK: 240218 関数名は docstring とあるが、実際に、３つのクオーテーションを落とすので、そういった関数名にすること。
