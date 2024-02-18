@@ -6,7 +6,7 @@ pub fn remove_comment(src: &String, targets: Vec<&str>) -> String {
     common::remove_comment(src, targets, comment_marker)
 }
 
-pub fn remove_docstring(src: &String) -> String {  // HACK: 240218 関数名は docstring とあるが、実際に、３つのクオーテーションを落とすので、そういった関数名にすること。
+pub fn remove_multiline_comment(src: &String) -> String {  // HACK: 240218 関数名は docstring とあるが、実際に、３つのクオーテーションを落とすので、そういった関数名にすること。
     let re = Regex::new(r#"\s*?"{3}[\s\S]*?"{3}|\s*?'{3}[\s\S]*?'{3}"#).unwrap();  // INFO: 240218 \s は空白や改行コード。\S はそれ以外。*? は非貪欲マッチ。
     let result = re.replace_all(src, "");
     result.to_string()
@@ -42,8 +42,8 @@ mod tests {
     }
 
     #[test]
-    fn test_remove_docstring() {
-        use crate::rmc::py::remove_docstring;
+    fn test_remove_multiline_comment() {
+        use crate::rmc::py::remove_multiline_comment;
 
         let src = r#"
             import datetime
@@ -67,6 +67,6 @@ mod tests {
                 return 123
         "#;
 
-        assert_eq!(remove_docstring(&src.to_string()), dst.to_string());
+        assert_eq!(remove_multiline_comment(&src.to_string()), dst.to_string());
     }
 }

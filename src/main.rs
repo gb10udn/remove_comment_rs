@@ -1,10 +1,12 @@
-use std::io::prelude::*;
-use std::fs::File;
+use std::io::{prelude::*, Write};
+use std::fs::{self, File};
+use std::path::PathBuf;
+use chrono::Local;
 mod rmc;
 
 
  fn main() {
-    let path = "./misc/sample_001.py";
+    let path = "./misc/sample_001.py";  // TODO: 240218 ここをユーザー入力 or プログラムの置かれたカレントディレクトリにする。
     let rm_docstring = true;
 
     let path = String::from(path);  // TODO: 240217 ベースディレクトリを指定すると、その配下の .py ファイルを対象とするようにする。
@@ -14,9 +16,41 @@ mod rmc;
     code = rmc::py::remove_comment(&code, vec!["TODO:", "FIXME:", "EDIT:", "HACK:", "INFO:", "[START]", "[END]"]);
 
     if rm_docstring {
-        code = rmc::py::remove_docstring(&code);
+        code = rmc::py::remove_multiline_comment(&code);
     }
-    println!("{}", code);  // TODO: 240217 ファイルに書き込む。 (requirements.txt を元に環境を作って、pyinstaller でビルドまでできると、いいかも？)
+    println!("{}", code);  // HACK: 240217 requirements.txt を元に環境を作って、pyinstaller でビルドまでできるといいかも？
+
+
+    // TODO: 240218 複数ディレクトリの場合に、ベースディレクトリからのディレクトリ構成にすること。
+    let path_buf = PathBuf::from(&path);
+
+    let fname = path_buf
+        .file_name()
+        .unwrap()
+        .to_string_lossy();
+
+    let now = Local::now()
+        .format("%Y%m%d_%H%M%S")
+        .to_string();
+    let dst = format!(r".\dst_rmc\{}\{}", now, fname);
+
+    println!("{}", dst);  // -> うまく取得できていそう。
+
+    
+    let path_buf = PathBuf::from(&dst);
+    let base_path = path_buf
+        .parent()
+        .unwrap()
+        .to_string_lossy();
+    println!("base_path = {}", base_path);  // -> うまく取得できていそう。
+    fs::create_dir_all(base_path.to_string()).unwrap();  // HACK: 240218 (あまり考えられないが) 重複したフォルダを操作する場合に処理止めていいかも？
+
+    let mut file = File::create(dst)
+        .expect("file not found.");  
+
+    write!(file, "{}", code)
+        .expect("cannot write.");
+
 }
 
 fn open_file(path: &String) -> String {
