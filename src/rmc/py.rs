@@ -1,7 +1,7 @@
 use regex::Regex;
 use crate::rmc::common;
 
-pub fn remove_comment(src: &String, targets: Vec<&str>) -> String {
+pub fn remove_comment(src: &String, targets: &Vec<&str>) -> String {
     let comment_marker = "#";
     common::remove_comment(src, targets, comment_marker)
 }
@@ -38,7 +38,7 @@ mod tests {
             os.path.basename("hoge")
         "#;
 
-        assert_eq!(remove_comment(&src.to_string(), vec!["TODO:", "FIXME:"]), dst.to_string());
+        assert_eq!(remove_comment(&src.to_string(), &vec!["TODO:", "FIXME:"]), dst.to_string());
     }
 
     #[test]
