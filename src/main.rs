@@ -1,6 +1,6 @@
 use std::io::{prelude::*, Write};
 use std::fs::{self, File};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use chrono::Local;
 mod rmc;
 
@@ -27,9 +27,9 @@ fn remove_comment_and_save(path: &String, base_dir: &str, targets: Vec<&str>, rm
         code = rmc::py::remove_multiline_comment(&code);
     }
 
-    let path_buf = PathBuf::from(&path);
+    let path_ = Path::new(&path);  // HACK: 240219 PathBuf でなくて、Path でも同じことできんか？
 
-    let fname = path_buf
+    let fname = path_
         .file_name()
         .unwrap()
         .to_string_lossy();
@@ -37,10 +37,10 @@ fn remove_comment_and_save(path: &String, base_dir: &str, targets: Vec<&str>, rm
     let now = Local::now()
         .format("%Y%m%d_%H%M%S")
         .to_string();
-    let dst = format!(r".\dst_rmc\{}\{}", now, fname);  // TODO: 240219 base_dir が存在する場合に、パスの挿入を実行する。
+    let dst = format!(r".\dst_rmc\{}\{}", now, fname);  // EDIT: 240219 base_dir が存在する場合に、パスの挿入を実行する。
 
-    let path_buf = PathBuf::from(&dst);
-    let base_path = path_buf
+    let dst_ = Path::new(&dst);
+    let base_path = dst_
         .parent()
         .unwrap()
         .to_string_lossy();
