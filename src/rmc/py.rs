@@ -15,7 +15,7 @@ pub fn remove_multiline_comment(src: &String) -> String {  // HACK: 240218 関�
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_remove_head_and_tail_double_quotation() {
+    fn test_remove_head_and_tail_double_quotation() {  // FIXME: 240218 これ、main.rs で書くべきテストでは？
         use crate::remove_head_and_tail_double_quotation;
 
         assert_eq!(remove_head_and_tail_double_quotation(&String::from("abc\n")), String::from("abc"));

@@ -6,22 +6,27 @@ mod rmc;
 
 
  fn main() {
+    // [START] set up params
     let path = "./misc/sample_001.py";  // TODO: 240218 ここをユーザー入力 or プログラムの置かれたカレントディレクトリにする。
-    let rm_docstring = true;
+    let rm_multiline_comment = true;
+    let targets = vec!["TODO:", "FIXME:", "EDIT:", "HACK:", "INFO:", "[START]", "[END]"];
+    // [END] set up params
 
     let path = String::from(path);  // TODO: 240217 ベースディレクトリを指定すると、その配下の .py ファイルを対象とするようにする。
     let path = remove_head_and_tail_double_quotation(&path);
 
-    let mut code = open_file(&path);
-    code = rmc::py::remove_comment(&code, vec!["TODO:", "FIXME:", "EDIT:", "HACK:", "INFO:", "[START]", "[END]"]);
+    remove_comment_and_save(&path, "", targets, rm_multiline_comment);
+}
 
-    if rm_docstring {
+// HACK: 240217 requirements.txt を元に環境を作って、pyinstaller でビルドまでできるといいかも？
+fn remove_comment_and_save(path: &String, base_dir: &str, targets: Vec<&str>, rm_multiline_comment: bool) {
+    let mut code = open_file(&path);
+    code = rmc::py::remove_comment(&code, targets);
+
+    if rm_multiline_comment {
         code = rmc::py::remove_multiline_comment(&code);
     }
-    println!("{}", code);  // HACK: 240217 requirements.txt を元に環境を作って、pyinstaller でビルドまでできるといいかも？
 
-
-    // TODO: 240218 複数ディレクトリの場合に、ベースディレクトリからのディレクトリ構成にすること。
     let path_buf = PathBuf::from(&path);
 
     let fname = path_buf
@@ -32,17 +37,13 @@ mod rmc;
     let now = Local::now()
         .format("%Y%m%d_%H%M%S")
         .to_string();
-    let dst = format!(r".\dst_rmc\{}\{}", now, fname);
+    let dst = format!(r".\dst_rmc\{}\{}", now, fname);  // TODO: 240219 base_dir が存在する場合に、パスの挿入を実行する。
 
-    println!("{}", dst);  // -> うまく取得できていそう。
-
-    
     let path_buf = PathBuf::from(&dst);
     let base_path = path_buf
         .parent()
         .unwrap()
         .to_string_lossy();
-    println!("base_path = {}", base_path);  // -> うまく取得できていそう。
     fs::create_dir_all(base_path.to_string()).unwrap();  // HACK: 240218 (あまり考えられないが) 重複したフォルダを操作する場合に処理止めていいかも？
 
     let mut file = File::create(dst)
@@ -50,7 +51,6 @@ mod rmc;
 
     write!(file, "{}", code)
         .expect("cannot write.");
-
 }
 
 fn open_file(path: &String) -> String {
