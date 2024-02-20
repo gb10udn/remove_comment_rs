@@ -81,7 +81,7 @@ fn retrieve_path_vec(base_dir: &String) -> Vec<String> {  // HACK: 240220 引数
             }
         }
     }
-    result  // HACK: 240220 単体テストユニットを作るといいと思う。
+    result
 }
 
 fn open_file(path: &String) -> String {
@@ -103,4 +103,24 @@ fn remove_head_and_tail_double_quotation(arg: &String) -> String {
         result.pop();
     }
     result
+}
+
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_remove_head_and_tail_double_quotation() { 
+        use crate::remove_head_and_tail_double_quotation;
+
+        assert_eq!(remove_head_and_tail_double_quotation(&String::from("abc\n")), String::from("abc"));
+        assert_eq!(remove_head_and_tail_double_quotation(&String::from("\"abc\"\n")), String::from("abc"));
+    }
+
+    #[test]
+    fn test_retrieve_path_vec() {
+        use crate::retrieve_path_vec;
+
+        let src = r".\misc";
+        assert_eq!(retrieve_path_vec(&src.to_string()), vec![String::from(r".\misc\piyo\sample_002.py"), String::from(r".\misc\sample_001.py"),]);
+    }
 }
