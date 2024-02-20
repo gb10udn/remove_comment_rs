@@ -42,12 +42,10 @@ fn main() {
         }
 
     } else {
-        // TODO: 240220 ファイルパスが存在しない可能性があることを、ユーザーに通知する。
-        panic!("FetalError: unknown type of error ...");  // INFO: 240219 ファイルでもディレクトリでもなく、ファイルが破損している場合
+        panic!("{}", format!(r#"FetalError: unknown type of error  -> "{}""#, src));
     }
 }
 
-// HACK: 240217 requirements.txt を元に環境を作って、pyinstaller でビルドまでできるといいかも？
 fn remove_comment_and_save_one(src: &String, dst: &String, targets: &Vec<&str>, rm_multiline_comment: &bool) {  // TODO: 240220 ソースコード以外の対応を検討する。
     let mut code = open_file(&src);
     code = rmc::py::remove_comment(&code, &targets);  // TODO: 240219 python 以外のコードにも対応すること。(拡張子で分岐する。)
@@ -71,6 +69,7 @@ fn remove_comment_and_save_one(src: &String, dst: &String, targets: &Vec<&str>, 
         .expect("cannot write.");
 }
 
+/// base_dir 配下のファイルを再帰的に検索し、そのパスのベクタ型を返す関数。
 fn retrieve_path_vec(base_dir: &String) -> Vec<String> {  // HACK: 240220 引数は、Path で与えてもいいのかも？
     let mut result: Vec<String> = vec![];
     for entry in WalkDir::new(base_dir) {

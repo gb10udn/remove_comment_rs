@@ -5,8 +5,7 @@ use regex::Regex;
 pub fn remove_comment(src: &String, targets: &Vec<&str>, comment_marker: &str) -> String {  // TODO: 240218 ps / vba にも対応すること。(vba を引き抜いて変換して、また、.xlsm に戻すのもいいかも？)
     let pattern = targets
         .iter()
-        // .map(|keyword| format!(r"\s*?#\s*?{}.*", keyword))  // HACK: 240218 powershell や、VBA と共通部分をくくりだせるようにする。
-        .map(|keyword| format!(r"\s*?{}\s*?{}.*", comment_marker, keyword))  // HACK: 240218 powershell や、VBA と共通部分をくくりだせるようにする。
+        .map(|keyword| format!(r"\s*?{}\s*?{}.*", comment_marker, keyword))
         .collect::<Vec<String>>()
         .join("|");
     let re = Regex::new(&pattern).unwrap();
