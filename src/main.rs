@@ -6,7 +6,7 @@ use walkdir::WalkDir;
 mod rmc;
 
 
- fn main() {
+fn main() {
     // [START] set up params
     // let src = "./misc/sample_001.py";  // TODO: 240218 ここをユーザー入力 or プログラムの置かれたカレントディレクトリにする。
     // let src = r"C:\Users\t.imaishi\Documents\_imis\01_program\01_project\240213_remove_comment_rs\remove_comment_rs\misc";
@@ -19,52 +19,49 @@ mod rmc;
     let src = remove_head_and_tail_double_quotation(&src);  // HACK: 240219 タイミングは要検討
     let src_ = Path::new(&src);
 
-    let mut dst = PathBuf::from(r".\dst_rmc");
+    let mut temp_dst = PathBuf::from(r".\dst_rmc");
     let now: String = Local::now()
         .format("%Y%m%d_%H%M%S")
         .to_string();
-    dst.push(&now);
+    temp_dst.push(&now);
     
     if src_.is_file() {
-        dst.push(src_.file_name().unwrap());
-        let dst = dst.to_string_lossy().to_string();
+        temp_dst.push(src_.file_name().unwrap());
+        let dst = temp_dst.to_string_lossy().to_string();
         remove_comment_and_save_one(&src, &dst, &targets, &rm_multiline_comment);
 
     } else if src_.is_dir() {
-        let folder_name = src_.file_name().unwrap().to_string_lossy().to_string();
-        dst.push(folder_name);
-        let dst_base_dir = dst.to_string_lossy().to_string();
-        for entry in WalkDir::new(&src) {  // HACK: 240219 ネストが深くなっているので、ファイル一覧を取得するのがいいかも？
-            if let Ok(val) = entry {
-                if val.path().is_file() {  // FIXME: 240219 これで判定できないケースがなかったか確認せよ。(フォルダ名で、hoge.txt で誤判定しなかったっけ？)
-                    let fpath = val.path().to_string_lossy().to_string();
-                    let dst = fpath.replace(&src, &dst_base_dir);
-                    println!("fpath = {}", fpath);
-                    remove_comment_and_save_one(&fpath, &dst, &targets, &rm_multiline_comment);
-                }
-            }
+        let folder_name = src_.file_name().unwrap();
+        temp_dst.push(folder_name);
+        let dst_base_dir = temp_dst.to_string_lossy().to_string();
+        
+        let path_vec = retrieve_path_vec(&src);
+        for fpath in path_vec {
+            let dst = fpath.replace(&src, &dst_base_dir);
+            remove_comment_and_save_one(&fpath, &dst, &targets, &rm_multiline_comment);
         }
+
     } else {
-        panic!("FetalError: unknown type of error ...");  // INFO: 240219 ファイルでもディレクトリでもなく、ファイルが破損している場合。
+        // TODO: 240220 ファイルパスが存在しない可能性があることを、ユーザーに通知する。
+        panic!("FetalError: unknown type of error ...");  // INFO: 240219 ファイルでもディレクトリでもなく、ファイルが破損している場合
     }
 }
 
 // HACK: 240217 requirements.txt を元に環境を作って、pyinstaller でビルドまでできるといいかも？
-fn remove_comment_and_save_one(src: &String, dst: &String, targets: &Vec<&str>, rm_multiline_comment: &bool) {
+fn remove_comment_and_save_one(src: &String, dst: &String, targets: &Vec<&str>, rm_multiline_comment: &bool) {  // TODO: 240220 ソースコード以外の対応を検討する。
     let mut code = open_file(&src);
-    code = rmc::py::remove_comment(&code, &targets);  // TODO: 240219 python 以外のコードにも対応すること。
+    code = rmc::py::remove_comment(&code, &targets);  // TODO: 240219 python 以外のコードにも対応すること。(拡張子で分岐する。)
 
     if *rm_multiline_comment {
         code = rmc::py::remove_multiline_comment(&code);
     }
 
     // [START] create dist basedir
-    let dst_ = Path::new(dst);
-    let base_path = dst_
+    let dst = Path::new(dst);
+    let base_path = dst
         .parent()
-        .unwrap()
-        .to_string_lossy();
-    fs::create_dir_all(base_path.to_string()).unwrap();  // HACK: 240218 (あまり考えられないが) 重複したフォルダを操作する場合に処理止めていいかも？
+        .unwrap();
+    fs::create_dir_all(base_path).unwrap();  // HACK: 240218 (あまり考えられないが) 重複したフォルダを操作する場合に処理止めていいかも？
     // [END] create dist basedir
     
     let mut file = File::create(dst)
@@ -72,6 +69,19 @@ fn remove_comment_and_save_one(src: &String, dst: &String, targets: &Vec<&str>, 
 
     write!(file, "{}", code)
         .expect("cannot write.");
+}
+
+fn retrieve_path_vec(base_dir: &String) -> Vec<String> {  // HACK: 240220 引数は、Path で与えてもいいのかも？
+    let mut result: Vec<String> = vec![];
+    for entry in WalkDir::new(base_dir) {
+        if let Ok(val) = entry {
+            if val.path().is_file() {
+                let fpath = val.path().to_string_lossy().to_string();
+                result.push(fpath);
+            }
+        }
+    }
+    result  // HACK: 240220 単体テストユニットを作るといいと思う。
 }
 
 fn open_file(path: &String) -> String {
