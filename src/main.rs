@@ -16,7 +16,7 @@ fn main() {
     // [END] set up params
 
     let src = String::from(&src);
-    let src = remove_head_and_tail_double_quotation(&src);  // HACK: 240219 タイミングは要検討
+    let src = remove_head_and_tail_double_quotation(&src);  // HACK: 240219 タイミングは要検討 (対話的にユーザー入力を取得しない限りは不要かも？)
     let src_ = Path::new(&src);
 
     let mut temp_dst = PathBuf::from(r".\dst_rmc");
@@ -28,7 +28,7 @@ fn main() {
     if src_.is_file() {
         temp_dst.push(src_.file_name().unwrap());
         let dst = temp_dst.to_string_lossy().to_string();
-        remove_comment_and_save_one(&src, &dst, &targets, &rm_multiline_comment);
+        try_to_remove_comment_and_save_one(&src, &dst, &targets, &rm_multiline_comment);
 
     } else if src_.is_dir() {
         let folder_name = src_.file_name().unwrap();
@@ -38,35 +38,55 @@ fn main() {
         let path_vec = retrieve_path_vec(&src);
         for fpath in path_vec {
             let dst = fpath.replace(&src, &dst_base_dir);
-            remove_comment_and_save_one(&fpath, &dst, &targets, &rm_multiline_comment);
+            try_to_remove_comment_and_save_one(&fpath, &dst, &targets, &rm_multiline_comment);
         }
 
     } else {
         panic!("{}", format!("*****\nFetalError: unknown type of error  -> \"{}\"\n*****", src));
     }
+
+    // TODO: 240220 requirement.txt があり、pyinsraller が存在する場合は、ビルドまでやってあげる？
+    // TODO: 240220 フルパスでどこのファイルを処理したかは、別途 log ファイルに残してあげるといいような気もする。
 }
 
-fn remove_comment_and_save_one(src: &String, dst: &String, targets: &Vec<&str>, rm_multiline_comment: &bool) {  // TODO: 240220 ソースコード以外の対応を検討する。
-    let mut code = open_file(&src);
-    code = rmc::py::remove_comment(&code, &targets);  // TODO: 240219 python 以外のコードにも対応すること。(拡張子で分岐する。)
-
-    if *rm_multiline_comment {
-        code = rmc::py::remove_multiline_comment(&code);
+fn try_to_remove_comment_and_save_one(src: &String, dst: &String, targets: &Vec<&str>, rm_multiline_comment: &bool) {
+    let target_extensions = vec!["py", "ps", "xlsm", "txt", "json"];  // INFO: 240220 これ以外の拡張子の場合、保存もコメント削除も何も実行しない。
+    let src_ = Path::new(src);
+    if let Some(ext) = src_.extension() {
+        let ext = ext.to_str().unwrap();
+        if target_extensions.contains(&ext) {
+            let mut code = open_file(&src);
+            match ext {
+                "py" => {
+                    code = rmc::py::remove_comment(&code, &targets);
+                    if *rm_multiline_comment {
+                        code = rmc::py::remove_multiline_comment(&code);
+                    }
+                }
+                "ps" => {
+                    // TODO: 240220 (将来用) ps
+                }
+                "xlsm" => {
+                    // TODO: 240220 (将来用) xlsm (バイナリファイルで特殊だから分けた方がいいかも？)
+                }
+                _ => {}
+            }
+        
+            // [START] create dist basedir
+            let dst = Path::new(dst);
+            let base_path = dst
+                .parent()
+                .unwrap();
+            fs::create_dir_all(base_path).unwrap();  // HACK: 240218 (あまり考えられないが) 重複したフォルダを操作する場合に処理止めていいかも？
+            // [END] create dist basedir
+            
+            let mut file = File::create(dst)
+                .expect("file not found.");  
+        
+            write!(file, "{}", code)
+                .expect("cannot write.");
+        }
     }
-
-    // [START] create dist basedir
-    let dst = Path::new(dst);
-    let base_path = dst
-        .parent()
-        .unwrap();
-    fs::create_dir_all(base_path).unwrap();  // HACK: 240218 (あまり考えられないが) 重複したフォルダを操作する場合に処理止めていいかも？
-    // [END] create dist basedir
-    
-    let mut file = File::create(dst)
-        .expect("file not found.");  
-
-    write!(file, "{}", code)
-        .expect("cannot write.");
 }
 
 /// base_dir 配下のファイルを再帰的に検索し、そのパスのベクタ型を返す関数。
@@ -84,7 +104,7 @@ fn retrieve_path_vec(base_dir: &String) -> Vec<String> {  // HACK: 240220 引数
 }
 
 fn open_file(path: &String) -> String {
-    let mut f = File::open(path).unwrap();
+    let mut f = File::open(path).unwrap();  // FIXME: 240220 バイナリの場合失敗すると思うので、Option<String> を返した方がいいのかも？
     let mut result = String::new();
     f.read_to_string(&mut result).unwrap();
     result
