@@ -3,19 +3,19 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use chrono::Local;
 use walkdir::WalkDir;
+use clap::Parser;
 mod rmc;
 
 
 fn main() {
     // [START] set up params
-    // let src = "./misc/sample_001.py";  // TODO: 240218 ここをユーザー入力 or プログラムの置かれたカレントディレクトリにする。
-    // let src = r"C:\Users\t.imaishi\Documents\_imis\01_program\01_project\240213_remove_comment_rs\remove_comment_rs\misc";
-    let src = r".\misc";
+    let args = Args::parse();
+    let src = args.src;
     let rm_multiline_comment = true;
     let targets = vec!["TODO:", "FIXME:", "EDIT:", "HACK:", "INFO:", "[START]", "[END]"];
     // [END] set up params
 
-    let src = String::from(src);  // TODO: 240217 ベースディレクトリを指定すると、その配下の .py ファイルを対象とするようにする。
+    let src = String::from(&src);
     let src = remove_head_and_tail_double_quotation(&src);  // HACK: 240219 タイミングは要検討
     let src_ = Path::new(&src);
 
@@ -42,7 +42,7 @@ fn main() {
         }
 
     } else {
-        panic!("{}", format!(r#"FetalError: unknown type of error  -> "{}""#, src));
+        panic!("{}", format!("*****\nFetalError: unknown type of error  -> \"{}\"\n*****", src));
     }
 }
 
@@ -104,6 +104,13 @@ fn remove_head_and_tail_double_quotation(arg: &String) -> String {
     result
 }
 
+#[derive(Parser, Debug)]
+#[command()]
+struct Args {
+    /// コメント削除する source のパス。ファイル or ディレクトリを指定する。
+    #[arg(short = 's', long)]
+    src: String,
+}
 
 #[cfg(test)]
 mod tests {
