@@ -9,10 +9,11 @@ mod rmc;
 
 fn main() {
     // [START] set up params
-    let args = Args::parse();
+    let args = Args::parse();  // HACK: 240221 引数の渡し方は運用決めてから再度検討すること。
     let src = args.src;
     let rm_multiline_comment = true;
-    let targets = vec!["TODO:", "FIXME:", "EDIT:", "HACK:", "INFO:", "[START]", "[END]"];
+    let remove_comments = vec!["TODO:", "FIXME:", "EDIT:", "HACK:", "INFO:", "[START]", "[END]"];
+    let target_extensions = vec!["py", "ps", "xlsm", "txt", "json"];  // INFO: 240221 この拡張子に含まれないファイルは、コピーすら実施されない点に注意。
     // [END] set up params
 
     let src = String::from(&src);
@@ -28,17 +29,17 @@ fn main() {
     if src_.is_file() {
         temp_dst.push(src_.file_name().unwrap());
         let dst = temp_dst.to_string_lossy().to_string();
-        try_to_remove_comment_and_save_one(&src, &dst, &targets, &rm_multiline_comment);
+        try_to_remove_comment_and_save_one(&src, &dst, &remove_comments, &target_extensions, &rm_multiline_comment);
 
     } else if src_.is_dir() {
         let folder_name = src_.file_name().unwrap();
         temp_dst.push(folder_name);
         let dst_base_dir = temp_dst.to_string_lossy().to_string();
         
-        let path_vec = retrieve_path_vec(&src);
+        let path_vec = retrieve_path_vec(&src, &target_extensions);
         for fpath in path_vec {
             let dst = fpath.replace(&src, &dst_base_dir);
-            try_to_remove_comment_and_save_one(&fpath, &dst, &targets, &rm_multiline_comment);
+            try_to_remove_comment_and_save_one(&fpath, &dst, &remove_comments, &target_extensions, &rm_multiline_comment);
         }
 
     } else {
@@ -49,8 +50,7 @@ fn main() {
     // TODO: 240220 フルパスでどこのファイルを処理したかは、別途 log ファイルに残してあげるといいような気もする。
 }
 
-fn try_to_remove_comment_and_save_one(src: &String, dst: &String, targets: &Vec<&str>, rm_multiline_comment: &bool) {
-    let target_extensions = vec!["py", "ps", "xlsm", "txt", "json"];  // INFO: 240220 これ以外の拡張子の場合、保存もコメント削除も何も実行しない。
+fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comments: &Vec<&str>, target_extensions: &Vec<&str>, rm_multiline_comment: &bool) {
     let src_ = Path::new(src);
     if let Some(ext) = src_.extension() {
         let ext = ext.to_str().unwrap();
@@ -58,7 +58,7 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, targets: &Vec<
             let mut code = open_file(&src);
             match ext {
                 "py" => {
-                    code = rmc::py::remove_comment(&code, &targets);
+                    code = rmc::py::remove_comment(&code, &remove_comments);
                     if *rm_multiline_comment {
                         code = rmc::py::remove_multiline_comment(&code);
                     }
@@ -90,13 +90,18 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, targets: &Vec<
 }
 
 /// base_dir 配下のファイルを再帰的に検索し、そのパスのベクタ型を返す関数。
-fn retrieve_path_vec(base_dir: &String) -> Vec<String> {  // HACK: 240220 引数は、Path で与えてもいいのかも？
+fn retrieve_path_vec(base_dir: &String, target_extensions: &Vec<&str>) -> Vec<String> {  // HACK: 240220 引数は、Path で与えてもいいのかも？
     let mut result: Vec<String> = vec![];
     for entry in WalkDir::new(base_dir) {
         if let Ok(val) = entry {
             if val.path().is_file() {
-                let fpath = val.path().to_string_lossy().to_string();
-                result.push(fpath);
+                if let Some(ext) = val.path().extension() {
+                    let ext = ext.to_str().unwrap();
+                    if target_extensions.contains(&ext) {
+                        let fpath = val.path().to_string_lossy().to_string();
+                        result.push(fpath);
+                    }
+                }
             }
         }
     }
@@ -147,6 +152,10 @@ mod tests {
         use crate::retrieve_path_vec;
 
         let src = r".\misc";
-        assert_eq!(retrieve_path_vec(&src.to_string()), vec![String::from(r".\misc\piyo\sample_002.py"), String::from(r".\misc\sample_001.py"),]);
+        let target_extensions = vec!["py"];
+        assert_eq!(retrieve_path_vec(&src.to_string(), &target_extensions), vec![String::from(r".\misc\piyo\sample_002.py"), String::from(r".\misc\sample_001.py"),]);
+        
+        let target_extensions = vec!["ps"];  // INFO: 240221 ps を指定すると、py ファイルは取得しない。
+        assert_ne!(retrieve_path_vec(&src.to_string(), &target_extensions), vec![String::from(r".\misc\piyo\sample_002.py"), String::from(r".\misc\sample_001.py"),]);
     }
 }
