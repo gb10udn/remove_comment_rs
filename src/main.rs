@@ -13,7 +13,7 @@ fn main() {
     let src = args.src;
     let rm_multiline_comment = true;
     let remove_comments = vec!["TODO:", "FIXME:", "EDIT:", "HACK:", "INFO:", "[START]", "[END]"];
-    let target_extensions = vec!["py", "ps", "xlsm", "txt", "json"];  // INFO: 240221 この拡張子に含まれないファイルは、コピーすら実施されない点に注意。
+    let target_extensions = vec!["py", "ps1", "xlsm", "txt", "json"];
     // [END] set up params
 
     let src = String::from(&src);
@@ -63,13 +63,16 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
                         code = rmc::py::remove_multiline_comment(&code);
                     }
                 }
-                "ps" => {
-                    // TODO: 240220 (将来用) ps
+                "ps1" => {
+                    code = rmc::ps::remove_comment(&code, &remove_comments);
+                    if *rm_multiline_comment {
+                        code = rmc::ps::remove_multiline_comment(&code);
+                    }
                 }
                 "xlsm" => {
                     // TODO: 240220 (将来用) xlsm (バイナリファイルで特殊だから分けた方がいいかも？)
                 }
-                _ => {}
+                _ => {}  // HACK: 240221 ここには (運用上) 来ないはずなので、何かしらのメッセージを出す？もしくは、panic! させておく？
             }
         
             // [START] create dist basedir
