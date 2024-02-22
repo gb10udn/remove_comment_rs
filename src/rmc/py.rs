@@ -14,7 +14,7 @@ pub fn remove_multiline_comment(src: &String) -> String {
 
 #[cfg(test)]
 mod tests {
- #[test]
+    #[test]
     fn test_remove_comment() {
         use crate::rmc::py::remove_comment;
 
