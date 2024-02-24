@@ -5,7 +5,7 @@ use chrono::Local;
 use walkdir::WalkDir;
 use clap::Parser;
 mod rmc;
-mod ofile;
+mod opf;
 
 
 fn main() {
@@ -57,7 +57,7 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
     if let Some(ext) = src_.extension() {
         let ext = ext.to_str().unwrap();
         if target_extensions.contains(&ext) {
-            let mut code = ofile::open_file(&src).unwrap();  // TODO: 240222 エラーハンドリングが雑すぎるので修正せよ。
+            let mut code = opf::open_file(&src).unwrap();  // TODO: 240222 エラーハンドリングが雑すぎるので修正せよ。
             match ext {
                 "py" => {
                     code = rmc::py::remove_comment(&code, &remove_comments);
