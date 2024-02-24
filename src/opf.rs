@@ -12,6 +12,7 @@ pub fn open_file(path: &String) -> Option<String> {
 
         match buffer {
             UTF16_LE => {
+                let mut file = File::open(&path).unwrap();
                 let mut buffer: Vec<u8> = Vec::new();
                 file.read_to_end(&mut buffer).expect("Failed to read file");  // INFO: 240222 1 byte ずつ読み出し。
                 let utf16: Vec<u16> = from_u8_to_u16_le(&buffer);
@@ -20,6 +21,7 @@ pub fn open_file(path: &String) -> Option<String> {
             }
             _ => {
                 // INFO: 240221 read as utf-8
+                let mut file = File::open(&path).unwrap(); 
                 let mut result = String::new();
                 match file.read_to_string(&mut result){
                     Ok(_) => {Some(result)}
@@ -77,5 +79,9 @@ mod tests {
         let path = String::from("./misc/utf16le.json");
         let result = open_file(&path).unwrap();
         assert_eq!(result, String::from(r#"{"id":"ピヨピヨ", "pw":"piyopiyo"}"#));
+
+        let path = String::from("./misc/sample_011.ps1");
+        let result = open_file(&path).unwrap();
+        assert_eq!(result, String::from(r#"{"id":"ピヨピヨ", "pw":"piyopiyo"}"#));  // EDIT: 240224 最初の２文字が切れる。。。？
     }
 }
