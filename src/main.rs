@@ -11,13 +11,20 @@ mod opf;
 fn main() {
     // [START] set up params
     let args = Args::parse();  // HACK: 240221 引数の渡し方は運用決めてから再度検討すること。
-    let src = args.src;
     let rm_multiline_comment = true;
     let remove_comments = vec!["TODO:", "FIXME:", "EDIT:", "HACK:", "INFO:", "[START]", "[END]"];
     let target_extensions = vec!["py", "ps1", "psd1", "psm1", "xlsm", "txt", "json"];
     // [END] set up params
 
-    let src = String::from(&src);
+    let src: String;
+    match args.src {
+        Some(val) => {
+            src = val;
+        }
+        None => {
+            src = fs::canonicalize("./").unwrap().to_string_lossy().to_string();  // INFO: 240226 指定無い場合は、カレントディレクトリとする。
+        }
+    }
     let src = remove_head_and_tail_double_quotation(&src);  // HACK: 240219 タイミングは要検討 (対話的にユーザー入力を取得しない限りは不要かも？)
     let src_ = Path::new(&src);
 
@@ -42,7 +49,6 @@ fn main() {
             let dst = fpath.replace(&src, &dst_base_dir);
             try_to_remove_comment_and_save_one(&fpath, &dst, &remove_comments, &target_extensions, &rm_multiline_comment);
         }
-
     } else {
         panic!("{}", format!("*****\nFetalError: unknown type of error  -> \"{}\"\n*****", src));
     }
@@ -145,7 +151,7 @@ fn remove_head_and_tail_double_quotation(arg: &String) -> String {
 struct Args {
     /// コメント削除する source のパス。ファイル or ディレクトリを指定する。
     #[arg(short = 's', long)]
-    src: String,
+    src: Option<String>,
 }
 
 #[cfg(test)]
