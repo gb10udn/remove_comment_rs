@@ -52,56 +52,57 @@ fn main() {
 }
 
 fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comments: &Vec<&str>, target_extensions: &Vec<&str>, rm_multiline_comment: &bool) {
-    println!("src = {}", src);
     let src_ = Path::new(src);
     if let Some(ext) = src_.extension() {
         let ext = ext.to_str().unwrap();
         if target_extensions.contains(&ext) {
-            let mut code = opf::open_file(&src).unwrap();  // TODO: 240222 エラーハンドリングが雑すぎるので修正せよ。
-            match ext {
-                "py" => {
-                    code = rmc::py::remove_comment(&code, &remove_comments);
-                    if *rm_multiline_comment {
-                        code = rmc::py::remove_multiline_comment(&code);
+            if let Some(mut code) = opf::open_file(&src) {
+                match ext {
+                    "py" => {
+                        code = rmc::py::remove_comment(&code, &remove_comments);
+                        if *rm_multiline_comment {
+                            code = rmc::py::remove_multiline_comment(&code);
+                        }
                     }
-                }
-                "ps1" => {
-                    code = rmc::ps::remove_comment(&code, &remove_comments);
-                    if *rm_multiline_comment {
-                        code = rmc::ps::remove_multiline_comment(&code);
+                    "ps1" => {
+                        code = rmc::ps::remove_comment(&code, &remove_comments);
+                        if *rm_multiline_comment {
+                            code = rmc::ps::remove_multiline_comment(&code);
+                        }
                     }
-                }
-                "psd1" => {
-                    code = rmc::ps::remove_comment(&code, &remove_comments);
-                    if *rm_multiline_comment {
-                        code = rmc::ps::remove_multiline_comment(&code);
+                    "psd1" => {
+                        code = rmc::ps::remove_comment(&code, &remove_comments);
+                        if *rm_multiline_comment {
+                            code = rmc::ps::remove_multiline_comment(&code);
+                        }
                     }
-                }
-                "psm1" => {
-                    code = rmc::ps::remove_comment(&code, &remove_comments);
-                    if *rm_multiline_comment {
-                        code = rmc::ps::remove_multiline_comment(&code);
+                    "psm1" => {
+                        code = rmc::ps::remove_comment(&code, &remove_comments);
+                        if *rm_multiline_comment {
+                            code = rmc::ps::remove_multiline_comment(&code);
+                        }
                     }
+                    "xlsm" => {
+                        // TODO: 240220 (将来用) xlsm (バイナリファイルで特殊だから分けた方がいいかも？)
+                    }
+                    _ => {}  // HACK: 240221 ここには (運用上) 来ないはずなので、何かしらのメッセージを出す？もしくは、panic! させておく？
                 }
-                "xlsm" => {
-                    // TODO: 240220 (将来用) xlsm (バイナリファイルで特殊だから分けた方がいいかも？)
-                }
-                _ => {}  // HACK: 240221 ここには (運用上) 来ないはずなので、何かしらのメッセージを出す？もしくは、panic! させておく？
-            }
-        
-            // [START] create dist basedir
-            let dst = Path::new(dst);
-            let base_path = dst
-                .parent()
-                .unwrap();
-            fs::create_dir_all(base_path).unwrap();  // HACK: 240218 (あまり考えられないが) 重複したフォルダを操作する場合に処理止めていいかも？
-            // [END] create dist basedir
+                // [START] create dist basedir
+                let dst = Path::new(dst);
+                let base_path = dst
+                    .parent()
+                    .unwrap();
+                fs::create_dir_all(base_path).unwrap();  // HACK: 240218 (あまり考えられないが) 重複したフォルダを操作する場合に処理止めていいかも？
+                // [END] create dist basedir
+                
+                let mut file = File::create(dst)
+                    .expect("file not found.");  
             
-            let mut file = File::create(dst)
-                .expect("file not found.");  
-        
-            write!(file, "{}", code)
-                .expect("cannot write.");
+                write!(file, "{}", code)
+                    .expect("cannot write.");
+            } else {
+                println!("fail to open file -> {} (SHIFT-JIS ???)", src);
+            }
         }
     }
 }
