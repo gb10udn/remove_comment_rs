@@ -3,45 +3,36 @@ use std::io::prelude::*;
 use std::fs::File;
 
 
-pub fn open_file(path: &String) -> Option<String> {
+pub fn open_file(path: &String) -> Result<String, std::io::Error> {
     const UTF16_LE: [u8; 2] = [255, 254];
-    if let Ok(mut file) = File::open(&path) {
-        const READOUT_BYTE_NUM: usize = 2;
-        let mut buffer: [u8; READOUT_BYTE_NUM] = [0; READOUT_BYTE_NUM];
-        if let Ok(_) = file.read_exact(&mut buffer) {
-            match buffer {
-                UTF16_LE => {
-                    let mut buffer: Vec<u8> = Vec::new();
-                    match file.read_to_end(&mut buffer) {
-                        Ok(_) => {
-                            let utf16: Vec<u16> = from_u8_to_u16_le(&buffer);
-                            let result = decode_utf16_to_utf8(&utf16);
-                            Some(result)
-                        }
-                        Err(_) => {None}
-                    }
-                }
-                _ => {
-                    // INFO: 240221 read as utf-8
-                    read_as_utf8(&path)
-                }
+    let mut file = File::open(&path)?;
+    const READOUT_BYTE_NUM: usize = 2;
+    let mut buffer: [u8; READOUT_BYTE_NUM] = [0; READOUT_BYTE_NUM];
+    if let Ok(_) = file.read_exact(&mut buffer) {
+        match buffer {
+            UTF16_LE => {
+                let mut buffer: Vec<u8> = Vec::new();
+                file.read_to_end(&mut buffer)?;
+                let utf16: Vec<u16> = from_u8_to_u16_le(&buffer);
+                let result = decode_utf16_to_utf8(&utf16);
+                Ok(result)
             }
-        } else {
-            // INFO: 240226 2 byte 以下の場合は、utf-8 で決め打ちする。
-            read_as_utf8(&path)
+            _ => {
+                // INFO: 240221 read as utf-8
+                Ok(read_as_utf8(&path)?)
+            }
         }
     } else {
-        None
+        // INFO: 240226 2 byte 以下の場合は、utf-8 で決め打ちする。
+        read_as_utf8(&path)
     }
 }
 
-fn read_as_utf8(path: &String) -> Option<String> {
-    let mut file = File::open(&path).unwrap();
+fn read_as_utf8(path: &String) -> Result<String, std::io::Error> {
+    let mut file = File::open(&path)?;
     let mut result = String::new();
-    match file.read_to_string(&mut result) {
-        Ok(_) => {Some(result)}
-        Err(_) => {None}
-    }
+    file.read_to_string(&mut result)?;
+    Ok(result)
 }
 
 fn decode_utf16_to_utf8(source: &[u16]) -> String {

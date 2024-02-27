@@ -19,8 +19,8 @@ mod tests {
         use crate::rmc::ps::remove_comment;
 
         let src = r#"
-            ping  # INFO: 240221 これは消せるかな？
-            Write-Output 'ピヨピヨだよ～'  # FIXME: 240221 もっと硬派に泣くこと
+            ping  # INFO: これは消せるかな？
+            Write-Output 'ピヨピヨだよ～'  # FIXME: もっと硬派に泣くこと
         "#;
 
         let dst = r#"

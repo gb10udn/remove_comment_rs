@@ -54,7 +54,7 @@ fn main() {
     }
 
     // TODO: 240220 requirement.txt があり、pyinsraller が存在する場合は、ビルドまでやってあげる？
-    // TODO: 240220 フルパスでどこのファイルを処理したかは、別途 log ファイルに残してあげるといいような気もする。
+    // TODO: 240220 フルパスでどこのファイルを処理したかは、別途 log ファイルに残してあげるといいような気もする。(.exe ダブルクリックで実施するなら、必須かもしれない？)
 }
 
 fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comments: &Vec<&str>, target_extensions: &Vec<&str>, rm_multiline_comment: &bool) {
@@ -62,7 +62,7 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
     if let Some(ext) = src_.extension() {
         let ext = ext.to_str().unwrap();
         if target_extensions.contains(&ext) {
-            if let Some(mut code) = opf::open_file(&src) {
+            if let Ok(mut code) = opf::open_file(&src) {
                 match ext {
                     "py" => {
                         code = rmc::py::remove_comment(&code, &remove_comments);
