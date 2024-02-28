@@ -8,14 +8,16 @@ mod rmc;
 mod opf;
 
 
-fn main() {
-    // [START] set up params
+fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result 返すのでなくて、結果を表示する方が、ユーザーにとって優しいかもしれない？
+    // [START] set up params  // HACK: 240228 拡張子とかの設定は、config ファイルで運用するのが楽なような気もする。
     let args = Args::parse();  // HACK: 240221 引数の渡し方は運用決めてから再度検討すること。
     let rm_multiline_comment = true;
     let remove_comments = vec!["TODO:", "FIXME:", "EDIT:", "HACK:", "INFO:", "[START]", "[END]"];
-    let target_extensions = vec!["py", "ps1", "psd1", "psm1", "xlsm", "txt", "json"];
+    let target_extensions = vec!["py", "ps1", "psd1", "psm1", "xlsm", "txt", "json"];  // HACK: 240228 target の意味が分かりにくい。copy する text ファイルってことが分かりにくい。
     // [END] set up params
 
+
+    // [START] set up src / src_ params
     let src: String;
     match args.src {
         Some(val) => {
@@ -27,7 +29,9 @@ fn main() {
     }
     let src = remove_head_and_tail_double_quotation(&src);  // HACK: 240219 タイミングは要検討 (対話的にユーザー入力を取得しない限りは不要かも？)
     let src_ = Path::new(&src);
+    // [END] set up src / src_ params
 
+    
     let mut temp_dst = PathBuf::from(r".\dst_rmc");
     let now: String = Local::now()
         .format("%Y%m%d_%H%M%S")
@@ -37,7 +41,14 @@ fn main() {
     if src_.is_file() {
         temp_dst.push(src_.file_name().unwrap());
         let dst = temp_dst.to_string_lossy().to_string();
-        try_to_remove_comment_and_save_one(&src, &dst, &remove_comments, &target_extensions, &rm_multiline_comment);
+        match try_to_remove_comment_and_save_one(&src, &dst, &remove_comments, &target_extensions, &rm_multiline_comment) {
+            Ok(_) => {
+                Ok(())
+            },
+            Err(err) => {
+                Err(err.into())
+            }
+        }
 
     } else if src_.is_dir() {
         let folder_name = src_.file_name().unwrap();
@@ -45,23 +56,35 @@ fn main() {
         let dst_base_dir = temp_dst.to_string_lossy().to_string();
         
         let path_vec = retrieve_path_vec(&src, &target_extensions);
-        for fpath in path_vec {
+        let mut error_messages: Vec<String> = vec![];
+        for fpath in path_vec {  // TODO: 240228 最後に、ファイル何個が存在し、ターゲットのテキストファイルが何件で、処理したのが何件で、、、を表示するといいかも？
             let dst = fpath.replace(&src, &dst_base_dir);
-            try_to_remove_comment_and_save_one(&fpath, &dst, &remove_comments, &target_extensions, &rm_multiline_comment);
+            if let Err(err) = try_to_remove_comment_and_save_one(&fpath, &dst, &remove_comments, &target_extensions, &rm_multiline_comment) {
+                error_messages.push(err.to_string());
+            }
+        }
+        match error_messages.len() {
+            0 => {
+                Ok(())
+            },
+            _ => {
+                Err(format!("{:?}", error_messages).into())
+            },
         }
     } else {
-        panic!("{}", format!("*****\nFetalError: unknown type of error  -> \"{}\"\n*****", src));
+        Err(format!("File Not Found -> {}", src).into())
     }
 
     // TODO: 240220 requirement.txt があり、pyinsraller が存在する場合は、ビルドまでやってあげる？
     // TODO: 240220 フルパスでどこのファイルを処理したかは、別途 log ファイルに残してあげるといいような気もする。(.exe ダブルクリックで実施するなら、必須かもしれない？)
 }
 
-fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comments: &Vec<&str>, target_extensions: &Vec<&str>, rm_multiline_comment: &bool) {
+// EDIT: 240227 Result 型を返すようにする。
+fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comments: &Vec<&str>, target_extensions: &Vec<&str>, rm_multiline_comment: &bool) -> Result<(), Box<dyn std::error::Error>> {
     let src_ = Path::new(src);
     if let Some(ext) = src_.extension() {
         let ext = ext.to_str().unwrap();
-        if target_extensions.contains(&ext) {
+        if target_extensions.contains(&ext) {  // HACK: 240228 target ってのが、コメント削除のことか、コピー対象のことかが分かりにくい。target_text_file_extensions の方が長いけどわかりやすいかも？
             if let Ok(mut code) = opf::open_file(&src) {
                 match ext {
                     "py" => {
@@ -91,7 +114,7 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
                     "xlsm" => {
                         // TODO: 240220 (将来用) xlsm (バイナリファイルで特殊だから分けた方がいいかも？)
                     }
-                    _ => {}  // HACK: 240221 ここには (運用上) 来ないはずなので、何かしらのメッセージを出す？もしくは、panic! させておく？
+                    _ => {}
                 }
                 // [START] create dist basedir
                 let dst = Path::new(dst);
@@ -101,15 +124,24 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
                 fs::create_dir_all(base_path).unwrap();  // HACK: 240218 (あまり考えられないが) 重複したフォルダを操作する場合に処理止めていいかも？
                 // [END] create dist basedir
                 
+                // [START] save text file
                 let mut file = File::create(dst)
-                    .expect("file not found.");  
+                    .expect("file not found.");
             
                 write!(file, "{}", code)
                     .expect("cannot write.");
+                // [END] save text file
+
+                Ok(())
+
             } else {
-                println!("fail to open file -> {} (SHIFT-JIS ???)", src);
+                Err(format!("Fail to open file -> {}", src).into())  // FIXME: 240228 utf-8, utf-16le 以外だとここに来てしまう (Ex. Shift-JIS) のを修正せよ。
             }
+        } else {
+            Err(format!("").into())  // FIXME: 240228 ここの運用が少し微妙かも？taraget_ext でないファイルパスを渡すな、と。
         }
+    } else {
+        Err(format!("No Extension -? {}", src).into())  // INFO: 240228 拡張子を持たないテキストファイルは対象としない前提とした。
     }
 }
 

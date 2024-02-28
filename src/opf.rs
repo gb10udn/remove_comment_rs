@@ -3,12 +3,12 @@ use std::io::prelude::*;
 use std::fs::File;
 
 
-pub fn open_file(path: &String) -> Result<String, std::io::Error> {
+pub fn open_file(path: &String) -> Result<String, std::io::Error> {  // HACK: 240228 Error 型使って渡すのが良いのでは？
     const UTF16_LE: [u8; 2] = [255, 254];
     let mut file = File::open(&path)?;
     const READOUT_BYTE_NUM: usize = 2;
     let mut buffer: [u8; READOUT_BYTE_NUM] = [0; READOUT_BYTE_NUM];
-    if let Ok(_) = file.read_exact(&mut buffer) {
+    if let Ok(_) = file.read_exact(&mut buffer) {  // TODO: 240228 encoding_rs 使って、utf-8 でダメだったら、他のを順次試して、ダメだったら最後に力尽きてエラー返すとかで良いのでは？
         match buffer {
             UTF16_LE => {
                 let mut buffer: Vec<u8> = Vec::new();
@@ -19,7 +19,7 @@ pub fn open_file(path: &String) -> Result<String, std::io::Error> {
             }
             _ => {
                 // INFO: 240221 read as utf-8
-                Ok(read_as_utf8(&path)?)
+                Ok(read_as_utf8(&path)?)  // FIXME: 240228 このエラーの渡し方ってあってるか？
             }
         }
     } else {

@@ -2,10 +2,10 @@ Set-Location ($PSScriptRoot)
 
 Function test() {
     <#
-    docstring
+    Shift-jis のつもりで書いたコードです。
     #>
     try {
-        Write-Output 'This is test !!あああ'
+        Write-Output 'This is test !!'
     } catch {
         Write-Host $_  # INFO: remove me
     }

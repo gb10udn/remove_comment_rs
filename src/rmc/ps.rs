@@ -14,7 +14,7 @@ pub fn remove_multiline_comment(src: &String) -> String {
 
 #[cfg(test)]
 mod tests {
- #[test]
+    #[test]
     fn test_remove_comment() {
         use crate::rmc::ps::remove_comment;
 
@@ -28,7 +28,7 @@ mod tests {
             Write-Output 'ピヨピヨだよ～'
         "#;
 
-        assert_eq!(remove_comment(&src.to_string(), &vec!["INFO:", "FIXME: "]), dst.to_string());
+        assert_eq!(remove_comment(&src.to_string(), &vec!["INFO:", "FIXME:"]), dst.to_string());
     }
 
     #[test]
