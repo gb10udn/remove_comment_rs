@@ -79,7 +79,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result �
     // TODO: 240220 フルパスでどこのファイルを処理したかは、別途 log ファイルに残してあげるといいような気もする。(.exe ダブルクリックで実施するなら、必須かもしれない？)
 }
 
-// EDIT: 240227 Result 型を返すようにする。
+
 fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comments: &Vec<&str>, target_extensions: &Vec<&str>, rm_multiline_comment: &bool) -> Result<(), Box<dyn std::error::Error>> {
     let src_ = Path::new(src);
     if let Some(ext) = src_.extension() {

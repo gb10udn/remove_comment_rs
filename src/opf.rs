@@ -1,6 +1,7 @@
 use std::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use std::io::prelude::*;
 use std::fs::File;
+use encoding_rs::*;
 
 
 pub fn open_file(path: &String) -> Result<String, std::io::Error> {  // HACK: 240228 Error 型使って渡すのが良いのでは？
@@ -8,7 +9,7 @@ pub fn open_file(path: &String) -> Result<String, std::io::Error> {  // HACK: 24
     let mut file = File::open(&path)?;
     const READOUT_BYTE_NUM: usize = 2;
     let mut buffer: [u8; READOUT_BYTE_NUM] = [0; READOUT_BYTE_NUM];
-    if let Ok(_) = file.read_exact(&mut buffer) {  // TODO: 240228 encoding_rs 使って、utf-8 でダメだったら、他のを順次試して、ダメだったら最後に力尽きてエラー返すとかで良いのでは？
+    if let Ok(_) = file.read_exact(&mut buffer) {
         match buffer {
             UTF16_LE => {
                 let mut buffer: Vec<u8> = Vec::new();
@@ -18,8 +19,8 @@ pub fn open_file(path: &String) -> Result<String, std::io::Error> {  // HACK: 24
                 Ok(result)
             }
             _ => {
-                // INFO: 240221 read as utf-8
-                Ok(read_as_utf8(&path)?)  // FIXME: 240228 このエラーの渡し方ってあってるか？
+                // EDIT: 240228 encoding_rs 使って、utf-8 でダメだったら、他のを順次試して、ダメだったら最後に力尽きてエラー返すとかで良いのでは？
+                Ok(read_as_utf8(&path)?)
             }
         }
     } else {
@@ -80,5 +81,30 @@ mod tests {
         let path = String::from("./misc/utf16le.json");
         let result = open_file(&path).unwrap();
         assert_eq!(result, String::from(r#"{"id":"ピヨピヨ", "pw":"piyopiyo"}"#));
+    }
+
+    #[test]
+    fn test_encoding_rs_shift_jis() {
+        use std::fs;
+        use encoding_rs::*;
+
+        let path = "./misc/sample_012.ps1";
+        let s = fs::read(path).unwrap();
+        let (res, _, _) = SHIFT_JIS.decode(&s);  // INFO: 240229 使用可能エンコーディング -> https://docs.rs/encoding_rs/0.8.33/encoding_rs/all.html
+        let result = res.into_owned();
+        let expected = String::from(r#"Set-Location ($PSScriptRoot)
+
+Function test() {
+    <#
+    Shift-jis のつもりで書いたコードです。
+    #>
+    try {
+        Write-Output 'This is test !!'
+    } catch {
+        Write-Host $_  # INFO: remove me
+    }
+}"#).replace("\n", "\r\n");
+
+        assert_eq!(result, expected);
     }
 }
