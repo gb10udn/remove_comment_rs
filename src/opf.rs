@@ -1,10 +1,10 @@
 use std::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use std::io::prelude::*;
-use std::fs::File;
+use std::fs::{self, File};
 use encoding_rs::*;
 
 
-pub fn open_file(path: &String) -> Result<String, std::io::Error> {  // HACK: 240228 Error 型使って渡すのが良いのでは？
+pub fn open_file(path: &String) -> Result<String, std::io::Error> {  // HACK: 240228 Box Error 型使って渡すのが良いのでは？
     const UTF16_LE: [u8; 2] = [255, 254];
     let mut file = File::open(&path)?;
     const READOUT_BYTE_NUM: usize = 2;
@@ -14,13 +14,19 @@ pub fn open_file(path: &String) -> Result<String, std::io::Error> {  // HACK: 24
             UTF16_LE => {
                 let mut buffer: Vec<u8> = Vec::new();
                 file.read_to_end(&mut buffer)?;
-                let utf16: Vec<u16> = from_u8_to_u16_le(&buffer);
+                let utf16: Vec<u16> = from_u8_to_u16_le(&buffer);  // HACK: 240229 encoding_rs を導入することで対応すること。(不要関数も一緒に削除してしまうこと。)
                 let result = decode_utf16_to_utf8(&utf16);
                 Ok(result)
             }
             _ => {
-                // EDIT: 240228 encoding_rs 使って、utf-8 でダメだったら、他のを順次試して、ダメだったら最後に力尽きてエラー返すとかで良いのでは？
-                Ok(read_as_utf8(&path)?)
+                match read_as_utf8(&path) {
+                    Ok(result) => {
+                        Ok(result)
+                    },
+                    Err(_) => {
+                        Ok(force_read_as_shift_jis(&path))
+                    },
+                }
             }
         }
     } else {
@@ -34,6 +40,12 @@ fn read_as_utf8(path: &String) -> Result<String, std::io::Error> {
     let mut result = String::new();
     file.read_to_string(&mut result)?;
     Ok(result)
+}
+
+fn force_read_as_shift_jis(path: &String) -> String {
+    let s = fs::read(path).unwrap();  // FIXME: 240229 エラー処理を考えれていないので、修正せよ。
+    let (res, _, _) = SHIFT_JIS.decode(&s);
+    res.into_owned()
 }
 
 fn decode_utf16_to_utf8(source: &[u16]) -> String {
@@ -104,6 +116,28 @@ Function test() {
         Write-Host $_  # INFO: remove me
     }
 }"#).replace("\n", "\r\n");
+
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_force_read_as_shift_jis() {
+        use crate::opf::force_read_as_shift_jis;
+
+        let path = String::from("./misc/sample_012.ps1");
+        let result = force_read_as_shift_jis(&path);
+        let expected = String::from(r#"Set-Location ($PSScriptRoot)
+
+Function test() {
+    <#
+    Shift-jis のつもりで書いたコードです。
+    #>
+    try {
+        Write-Output 'This is test !!'
+    } catch {
+        Write-Host $_  # INFO: remove me
+    }
+}"#).replace("\n", "\r\n");  // EDIT: 240229 その後、rmc 実行すると、想定外のエラー起きたので、テストコード書いて修正せよ。
 
         assert_eq!(result, expected);
     }
