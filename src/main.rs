@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result �
             src = val;
         }
         None => {
-            src = fs::canonicalize("./").unwrap().to_string_lossy().to_string();  // INFO: 240226 指定無い場合は、カレントディレクトリとする。
+            src = fs::canonicalize("./").unwrap().to_string_lossy().to_string();
         }
     }
     let src = remove_head_and_tail_double_quotation(&src);  // HACK: 240219 タイミングは要検討 (対話的にユーザー入力を取得しない限りは不要かも？)
@@ -88,28 +88,28 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
             if let Ok(mut code) = opf::open_file(&src) {
                 match ext {
                     "py" => {
-                        code = rmc::py::remove_comment(&code, &remove_comments);
                         if *rm_multiline_comment {
                             code = rmc::py::remove_multiline_comment(&code);
                         }
+                        code = rmc::py::remove_comment(&code, &remove_comments);
                     }
                     "ps1" => {
-                        code = rmc::ps::remove_comment(&code, &remove_comments);
                         if *rm_multiline_comment {
                             code = rmc::ps::remove_multiline_comment(&code);
                         }
+                        code = rmc::ps::remove_comment(&code, &remove_comments);
                     }
                     "psd1" => {
-                        code = rmc::ps::remove_comment(&code, &remove_comments);
                         if *rm_multiline_comment {
                             code = rmc::ps::remove_multiline_comment(&code);
                         }
+                        code = rmc::ps::remove_comment(&code, &remove_comments);
                     }
                     "psm1" => {
-                        code = rmc::ps::remove_comment(&code, &remove_comments);
                         if *rm_multiline_comment {
                             code = rmc::ps::remove_multiline_comment(&code);
                         }
+                        code = rmc::ps::remove_comment(&code, &remove_comments);
                     }
                     "xlsm" => {
                         // TODO: 240220 (将来用) xlsm (バイナリファイルで特殊だから分けた方がいいかも？)

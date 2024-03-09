@@ -45,7 +45,7 @@ fn read_as_utf8(path: &String) -> Result<String, std::io::Error> {
 fn force_read_as_shift_jis(path: &String) -> String {
     let s = fs::read(path).unwrap();  // FIXME: 240229 エラー処理を考えれていないので、修正せよ。
     let (res, _, _) = SHIFT_JIS.decode(&s);
-    res.into_owned()
+    res.into_owned().replace("\r\n", "\n")  // INFO: 240307 utf-8 と同じ改行コードにするため。
 }
 
 fn decode_utf16_to_utf8(source: &[u16]) -> String {
@@ -87,12 +87,26 @@ mod tests {
     }
 
     #[test]
+    /// 読み出せるかどうか。
     fn test_open_file() {
         use crate::opf::open_file;
 
         let path = String::from("./misc/utf16le.json");
         let result = open_file(&path).unwrap();
         assert_eq!(result, String::from(r#"{"id":"ピヨピヨ", "pw":"piyopiyo"}"#));
+    }
+
+    #[test]
+    /// エンコーディングが異なっても、同様に読み出せるか。
+    fn test_open_file2() {
+        use crate::opf::open_file;
+
+        let path_shift_jis = String::from("./misc/sample_013_shift-jis.ps1");
+        let result_shift_jis = open_file(&path_shift_jis).unwrap();
+
+        let path_utf8 = String::from("./misc/sample_013_shift-jis.ps1");
+        let result_utf8 = open_file(&path_utf8).unwrap();
+        assert_eq!(result_shift_jis, result_utf8);
     }
 
     #[test]
@@ -137,7 +151,7 @@ Function test() {
     } catch {
         Write-Host $_  # INFO: remove me
     }
-}"#).replace("\n", "\r\n");  // EDIT: 240229 その後、rmc 実行すると、想定外のエラー起きたので、テストコード書いて修正せよ。
+}"#);
 
         assert_eq!(result, expected);
     }
