@@ -1,4 +1,3 @@
-use std::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use std::io::prelude::*;
 use std::fs::{self, File};
 use encoding_rs::*;
@@ -12,11 +11,7 @@ pub fn open_file(path: &String) -> Result<String, std::io::Error> {  // HACK: 24
     if let Ok(_) = file.read_exact(&mut buffer) {
         match buffer {
             UTF16_LE => {
-                let mut buffer: Vec<u8> = Vec::new();
-                file.read_to_end(&mut buffer)?;
-                let utf16: Vec<u16> = from_u8_to_u16_le(&buffer);  // HACK: 240229 encoding_rs を導入することで対応すること。(不要関数も一緒に削除してしまうこと。)
-                let result = decode_utf16_to_utf8(&utf16);
-                Ok(result)
+                Ok(read_as_utf16le(&path))
             }
             _ => {
                 match read_as_utf8(&path) {
@@ -42,50 +37,21 @@ fn read_as_utf8(path: &String) -> Result<String, std::io::Error> {
     Ok(result)
 }
 
-fn force_read_as_shift_jis(path: &String) -> String {
-    let s = fs::read(path).unwrap();  // FIXME: 240229 エラー処理を考えれていないので、修正せよ。
-    let (res, _, _) = SHIFT_JIS.decode(&s);
+fn read_as_utf16le(path: &String) -> String {
+    let s = fs::read(path).unwrap();  // FIXME: 240229 エラー処理を考えれていないので、修正せよ。 (path が存在しないケース)
+    let (res, _, _) = UTF_16LE.decode(&s);
     res.into_owned().replace("\r\n", "\n")  // INFO: 240307 utf-8 と同じ改行コードにするため。
 }
 
-fn decode_utf16_to_utf8(source: &[u16]) -> String {
-    decode_utf16(source.iter().cloned())
-        .map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
-        .collect()
-}
-
-fn from_u8_to_u16_le(bytes: &[u8]) -> Vec<u16> {
-    bytes
-        .chunks_exact(2) // INFO: 240224 バイト列を 2 バイトごとに分割
-        .map(|chunk| {
-            let byte1 = chunk[0] as u16;
-            let byte2 = chunk[1] as u16;
-            (byte2 << 8) | byte1
-        })
-        .collect()
+fn force_read_as_shift_jis(path: &String) -> String {
+    let s = fs::read(path).unwrap();  // FIXME: 240229 エラー処理を考えれていないので、修正せよ。 (path が存在しないケース)
+    let (res, _, _) = SHIFT_JIS.decode(&s);
+    res.into_owned().replace("\r\n", "\n")  // INFO: 240307 utf-8 と同じ改行コードにするため。
 }
 
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn test_from_u8_to_u16_le() { 
-        use crate::opf::from_u8_to_u16_le;
-        
-        let src: [u8; 6] = [1, 0, 3, 0, 4, 0];
-        let expected_result: [u16; 3] = [1, 3, 4];
-        let result = from_u8_to_u16_le(&src);
-        assert_eq!(result, expected_result);
-    }
-
-    #[test]
-    fn test_decode_utf16_to_utf8() {
-        use crate ::opf::decode_utf16_to_utf8;
-
-        let src: [u16; 1] = [0x3001];
-        assert_eq!(decode_utf16_to_utf8(&src), String::from("、"))
-    }
-
     #[test]
     /// 読み出せるかどうか。
     fn test_open_file() {
