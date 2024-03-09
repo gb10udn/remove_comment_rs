@@ -3,7 +3,7 @@ use std::fs::{self, File};
 use encoding_rs::*;
 
 
-pub fn open_file(path: &String) -> Result<String, std::io::Error> {  // HACK: 240228 Box Error 型使って渡すのが良いのでは？
+pub fn open_file(path: &String) -> Result<String, Box<dyn std::error::Error>> {
     const UTF16_LE: [u8; 2] = [255, 254];
     let mut file = File::open(&path)?;
     const READOUT_BYTE_NUM: usize = 2;
@@ -11,7 +11,7 @@ pub fn open_file(path: &String) -> Result<String, std::io::Error> {  // HACK: 24
     if let Ok(_) = file.read_exact(&mut buffer) {
         match buffer {
             UTF16_LE => {
-                Ok(read_as_utf16le(&path))
+                Ok(read_as_utf16le(&path)?)
             }
             _ => {
                 match read_as_utf8(&path) {
@@ -19,7 +19,7 @@ pub fn open_file(path: &String) -> Result<String, std::io::Error> {  // HACK: 24
                         Ok(result)
                     },
                     Err(_) => {
-                        Ok(force_read_as_shift_jis(&path))
+                        Ok(force_read_as_shift_jis(&path)?)
                     },
                 }
             }
@@ -30,23 +30,23 @@ pub fn open_file(path: &String) -> Result<String, std::io::Error> {  // HACK: 24
     }
 }
 
-fn read_as_utf8(path: &String) -> Result<String, std::io::Error> {
+fn read_as_utf8(path: &String) -> Result<String, Box<dyn std::error::Error>> {
     let mut file = File::open(&path)?;
     let mut result = String::new();
     file.read_to_string(&mut result)?;
     Ok(result)
 }
 
-fn read_as_utf16le(path: &String) -> String {
-    let s = fs::read(path).unwrap();  // FIXME: 240229 エラー処理を考えれていないので、修正せよ。 (path が存在しないケース)
+fn read_as_utf16le(path: &String) -> Result<String, Box<dyn std::error::Error>> {
+    let s = fs::read(path)?;
     let (res, _, _) = UTF_16LE.decode(&s);
-    res.into_owned().replace("\r\n", "\n")  // INFO: 240307 utf-8 と同じ改行コードにするため。
+    Ok(res.into_owned().replace("\r\n", "\n"))
 }
 
-fn force_read_as_shift_jis(path: &String) -> String {
-    let s = fs::read(path).unwrap();  // FIXME: 240229 エラー処理を考えれていないので、修正せよ。 (path が存在しないケース)
+fn force_read_as_shift_jis(path: &String) -> Result<String, Box<dyn std::error::Error>> {
+    let s = fs::read(path)?;
     let (res, _, _) = SHIFT_JIS.decode(&s);
-    res.into_owned().replace("\r\n", "\n")  // INFO: 240307 utf-8 と同じ改行コードにするため。
+    Ok(res.into_owned().replace("\r\n", "\n"))
 }
 
 
@@ -105,7 +105,7 @@ Function test() {
         use crate::opf::force_read_as_shift_jis;
 
         let path = String::from("./misc/sample_012.ps1");
-        let result = force_read_as_shift_jis(&path);
+        let result = force_read_as_shift_jis(&path).unwrap();
         let expected = String::from(r#"Set-Location ($PSScriptRoot)
 
 Function test() {
