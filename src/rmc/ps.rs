@@ -1,7 +1,7 @@
 use regex::Regex;
 use crate::rmc::common;
 
-pub fn remove_comment(src: &String, targets: &Vec<&str>) -> String {
+pub fn remove_comment(src: &String, targets: &Vec<String>) -> String {
     let comment_marker = "#";
     common::remove_comment(src, targets, comment_marker)
 }
@@ -28,7 +28,7 @@ mod tests {
             Write-Output 'ピヨピヨだよ～'
         "#;
 
-        assert_eq!(remove_comment(&src.to_string(), &vec!["INFO:", "FIXME:"]), dst.to_string());
+        assert_eq!(remove_comment(&src.to_string(), &vec![String::from("INFO:"), String::from("FIXME:")]), dst.to_string());
     }
 
     #[test]
@@ -51,7 +51,7 @@ Function test() {
     }
 }"#;
 
-        assert_eq!(remove_comment(&src.to_string(), &vec!["INFO:"]), dst.to_string());
+        assert_eq!(remove_comment(&src.to_string(), &vec![String::from("INFO:")]), dst.to_string());
     }
 
     #[test]
@@ -83,7 +83,7 @@ Function test() {
         use crate::rmc::ps::remove_multiline_comment;
 
         let code = open_file(&String::from("./misc/sample_012.ps1")).unwrap();  // INFO: 240307 shift-jis で読み込まれるはず
-        let result = remove_comment(&code, &vec!["INFO:"]);
+        let result = remove_comment(&code, &vec![String::from("INFO:")]);
         let result = remove_multiline_comment(&result);
         
         let dst = String::from(r#"Set-Location ($PSScriptRoot)

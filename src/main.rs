@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{Write, BufReader};
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use chrono::Local;
@@ -6,18 +6,13 @@ use walkdir::WalkDir;
 use clap::Parser;
 mod rmc;
 mod opf;
+use serde::{Deserialize, Serialize};
 
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result 返すのでなくて、結果を表示する方が、ユーザーにとって優しいかもしれない？
-    // [START] set up params  // HACK: 240228 拡張子とかの設定は、config ファイルで運用するのが楽なような気もする。
     let args = Args::parse();  // HACK: 240221 引数の渡し方は運用決めてから再度検討すること。
-    let rm_multiline_comment = true;
-    let remove_comments = vec!["TODO:", "FIXME:", "EDIT:", "HACK:", "INFO:", "[START]", "[END]"];
-    let target_extensions = vec!["py", "ps1", "psd1", "psm1", "xlsm", "txt", "json"];  // HACK: 240228 target の意味が分かりにくい。copy する text ファイルってことが分かりにくい。
-    // [END] set up params
+    let config = open_config("./config.json")?;
 
-
-    // [START] set up src / src_ params
     let src: String;
     match args.src {
         Some(val) => {
@@ -29,7 +24,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result �
     }
     let src = remove_head_and_tail_double_quotation(&src);  // HACK: 240219 タイミングは要検討 (対話的にユーザー入力を取得しない限りは不要かも？)
     let src_ = Path::new(&src);
-    // [END] set up src / src_ params
 
     
     let mut temp_dst = PathBuf::from(r".\dst_rmc");
@@ -41,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result �
     if src_.is_file() {
         temp_dst.push(src_.file_name().unwrap());
         let dst = temp_dst.to_string_lossy().to_string();
-        match try_to_remove_comment_and_save_one(&src, &dst, &remove_comments, &target_extensions, &rm_multiline_comment) {
+        match try_to_remove_comment_and_save_one(&src, &dst, &config.remove_comments, &config.target_extensions, &config.remove_multiline_comment) {
             Ok(_) => {
                 Ok(())
             },
@@ -55,11 +49,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result �
         temp_dst.push(folder_name);
         let dst_base_dir = temp_dst.to_string_lossy().to_string();
         
-        let path_vec = retrieve_path_vec(&src, &target_extensions);
+        let path_vec = retrieve_path_vec(&src, &config.target_extensions);
         let mut error_messages: Vec<String> = vec![];
         for fpath in path_vec {  // TODO: 240228 最後に、ファイル何個が存在し、ターゲットのテキストファイルが何件で、処理したのが何件で、、、を表示するといいかも？
             let dst = fpath.replace(&src, &dst_base_dir);
-            if let Err(err) = try_to_remove_comment_and_save_one(&fpath, &dst, &remove_comments, &target_extensions, &rm_multiline_comment) {
+            if let Err(err) = try_to_remove_comment_and_save_one(&fpath, &dst, &config.remove_comments, &config.target_extensions, &config.remove_multiline_comment) {
                 error_messages.push(err.to_string());
             }
         }
@@ -75,38 +69,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result �
         Err(format!("File Not Found -> {}", src).into())
     }
 
-    // TODO: 240220 requirement.txt があり、pyinsraller が存在する場合は、ビルドまでやってあげる？
     // TODO: 240220 フルパスでどこのファイルを処理したかは、別途 log ファイルに残してあげるといいような気もする。(.exe ダブルクリックで実施するなら、必須かもしれない？)
 }
 
 
-fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comments: &Vec<&str>, target_extensions: &Vec<&str>, rm_multiline_comment: &bool) -> Result<(), Box<dyn std::error::Error>> {
+fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comments: &Vec<String>, target_extensions: &Vec<String>, remove_multiline_comment: &bool) -> Result<(), Box<dyn std::error::Error>> {
     let src_ = Path::new(src);
     if let Some(ext) = src_.extension() {
         let ext = ext.to_str().unwrap();
-        if target_extensions.contains(&ext) {  // HACK: 240228 target ってのが、コメント削除のことか、コピー対象のことかが分かりにくい。target_text_file_extensions の方が長いけどわかりやすいかも？
+        if target_extensions.contains(&ext.to_string()) {  // HACK: 240228 target ってのが、コメント削除のことか、コピー対象のことかが分かりにくい。target_text_file_extensions の方が長いけどわかりやすいかも？
             if let Ok(mut code) = opf::open_file(&src) {
                 match ext {
                     "py" => {
-                        if *rm_multiline_comment {
+                        if *remove_multiline_comment {
                             code = rmc::py::remove_multiline_comment(&code);
                         }
                         code = rmc::py::remove_comment(&code, &remove_comments);
                     }
                     "ps1" => {
-                        if *rm_multiline_comment {
+                        if *remove_multiline_comment {
                             code = rmc::ps::remove_multiline_comment(&code);
                         }
                         code = rmc::ps::remove_comment(&code, &remove_comments);
                     }
                     "psd1" => {
-                        if *rm_multiline_comment {
+                        if *remove_multiline_comment {
                             code = rmc::ps::remove_multiline_comment(&code);
                         }
                         code = rmc::ps::remove_comment(&code, &remove_comments);
                     }
                     "psm1" => {
-                        if *rm_multiline_comment {
+                        if *remove_multiline_comment {
                             code = rmc::ps::remove_multiline_comment(&code);
                         }
                         code = rmc::ps::remove_comment(&code, &remove_comments);
@@ -135,7 +128,7 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
                 Ok(())
 
             } else {
-                Err(format!("Fail to open file -> {}", src).into())  // FIXME: 240228 utf-8, utf-16le 以外だとここに来てしまう (Ex. Shift-JIS) のを修正せよ。
+                Err(format!("Fail to open file -> {}", src).into())
             }
         } else {
             Err(format!("").into())  // FIXME: 240228 ここの運用が少し微妙かも？taraget_ext でないファイルパスを渡すな、と。
@@ -146,14 +139,14 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
 }
 
 /// base_dir 配下のファイルを再帰的に検索し、そのパスのベクタ型を返す関数。
-fn retrieve_path_vec(base_dir: &String, target_extensions: &Vec<&str>) -> Vec<String> {  // HACK: 240220 引数は、Path で与えてもいいのかも？
+fn retrieve_path_vec(base_dir: &String, target_extensions: &Vec<String>) -> Vec<String> {  // HACK: 240220 引数は、Path で与えてもいいのかも？
     let mut result: Vec<String> = vec![];
     for entry in WalkDir::new(base_dir) {
         if let Ok(val) = entry {
             if val.path().is_file() {
                 if let Some(ext) = val.path().extension() {
                     let ext = ext.to_str().unwrap();
-                    if target_extensions.contains(&ext) {
+                    if target_extensions.contains(&ext.to_string()) {
                         let fpath = val.path().to_string_lossy().to_string();
                         result.push(fpath);
                     }
@@ -176,6 +169,20 @@ fn remove_head_and_tail_double_quotation(arg: &String) -> String {
         result.pop();
     }
     result
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Config {
+    remove_multiline_comment: bool,
+    remove_comments: Vec<String>,
+    target_extensions: Vec<String>,
+}
+
+fn open_config(path: &str) -> Result<Config, Box<dyn std::error::Error>> {
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    let config: Config = serde_json::from_reader(reader)?;
+    Ok(config)
 }
 
 #[derive(Parser, Debug)]
@@ -201,10 +208,10 @@ mod tests {
         use crate::retrieve_path_vec;
 
         let src = r".\misc";
-        let target_extensions = vec!["py"];
+        let target_extensions = vec![String::from("py")];
         assert_eq!(retrieve_path_vec(&src.to_string(), &target_extensions), vec![String::from(r".\misc\piyo\sample_002.py"), String::from(r".\misc\sample_001.py"),]);
         
-        let target_extensions = vec!["ps"];  // INFO: 240221 ps を指定すると、py ファイルは取得しない。
+        let target_extensions = vec![String::from("ps")];  // INFO: 240221 ps を指定すると、py ファイルは取得しない。
         assert_ne!(retrieve_path_vec(&src.to_string(), &target_extensions), vec![String::from(r".\misc\piyo\sample_002.py"), String::from(r".\misc\sample_001.py"),]);
     }
 }
