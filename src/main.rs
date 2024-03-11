@@ -78,7 +78,7 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
     if let Some(ext) = src_.extension() {
         let ext = ext.to_str().unwrap();
         if target_extensions.contains(&ext.to_string()) {  // HACK: 240228 target ってのが、コメント削除のことか、コピー対象のことかが分かりにくい。target_text_file_extensions の方が長いけどわかりやすいかも？
-            if let Ok(mut code) = opf::open_file(&src) {
+            if let Ok(mut code) = opf::text::open_file(&src) {
                 match ext {
                     "py" => {
                         if *remove_multiline_comment {
@@ -105,10 +105,13 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
                         code = rmc::ps::remove_comment(&code, &remove_comments);
                     }
                     "xlsm" => {
-                        // TODO: 240220 (将来用) xlsm (バイナリファイルで特殊だから分けた方がいいかも？)
+                        // EDIT: 240310 calamine で、vba コードを取得し、.bas ファイルで出力する。
                     }
-                    _ => {}
+                    _ => {
+                        // INFO: 240310 .json など、コピペするだけのファイル。  // FIXME: 240310 この場合、わざわざテキストファイルとして開く必要がない気がしてきた。エラーの温床だし。
+                    }
                 }
+
                 // [START] create dist basedir
                 let dst = Path::new(dst);
                 let base_path = dst

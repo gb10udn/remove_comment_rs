@@ -33,7 +33,7 @@ mod tests {
 
     #[test]
     fn test_remove_comment_2() {
-        use crate::opf::open_file;
+        use crate::opf::text::open_file;
         use crate::rmc::ps::remove_comment;
 
         let src = open_file(&String::from("./misc/sample_012.ps1")).unwrap();
@@ -78,7 +78,7 @@ Function test() {
 
     #[test]
     fn test_remove_multiline_comment_as_shift_jis() {
-        use crate::opf::open_file;
+        use crate::opf::text::open_file;
         use crate::rmc::ps::remove_comment;
         use crate::rmc::ps::remove_multiline_comment;
 
