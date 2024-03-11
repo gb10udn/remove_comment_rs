@@ -25,7 +25,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result �
     let src = remove_head_and_tail_double_quotation(&src);  // HACK: 240219 タイミングは要検討 (対話的にユーザー入力を取得しない限りは不要かも？)
     let src_ = Path::new(&src);
 
-    
     let mut temp_dst = PathBuf::from(r".\dst_rmc");
     let now: String = Local::now()
         .format("%Y%m%d_%H%M%S")
@@ -90,11 +89,12 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
             match ext {
                 "xlsm" => {
                     let bas_file_vec = opf::xlsm::extract_bas(src);
-                    // EDIT: 240311 .bas ファイルを、.xlsm に格納する形で処理せよ。
                     for mut bas_file in bas_file_vec {
-                        println!("before\n{:?}\n--------------------", bas_file);
                         bas_file.remove_comment(&remove_comments);
-                        println!("after\n{:?}", bas_file);
+
+                        let mut dst_bas = dst.parent().unwrap().to_path_buf();
+                        dst_bas.push(dst.file_stem().unwrap().to_string_lossy().to_string());
+                        bas_file.save(&dst_bas.to_string_lossy().to_string())?;
                     }
                     Ok(())
                 },

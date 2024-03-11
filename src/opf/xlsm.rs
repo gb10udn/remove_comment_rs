@@ -1,4 +1,7 @@
 use calamine::{Reader, open_workbook, Xlsx};
+use std::fs::{self, File};
+use std::path::PathBuf;
+use std::io::Write;
 use crate::rmc::common::remove_comment;
 
 
@@ -12,6 +15,15 @@ impl BasFile {
     /// self.code から、コメント削除する。
     pub fn remove_comment(&mut self, targets: &Vec<String>) {
         self.code = remove_comment(&self.code, targets, "'");
+    }
+
+    pub fn save(&self, dst_dir: &String) -> Result<(), Box<dyn std::error::Error>> {
+        fs::create_dir_all(dst_dir)?;
+        let mut dst = PathBuf::from(dst_dir);
+        dst.push(&self.file_name);
+        let mut file = File::create(dst)?;
+        write!(file, "{}", self.code)?;
+        Ok(())
     }
 
     // TODO: 240311 TEST_ から始まる関数を削除する機能を追加する。(= 単体テストコードを削除する。)
