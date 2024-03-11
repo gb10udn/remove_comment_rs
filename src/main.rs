@@ -78,66 +78,78 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
     if let Some(ext) = src_.extension() {
         let ext = ext.to_str().unwrap();
         if target_extensions.contains(&ext.to_string()) {  // HACK: 240228 target ってのが、コメント削除のことか、コピー対象のことかが分かりにくい。target_text_file_extensions の方が長いけどわかりやすいかも？
-            if let Ok(mut code) = opf::text::open_file(&src) {
-                match ext {
-                    "py" => {
-                        if *remove_multiline_comment {
-                            code = rmc::py::remove_multiline_comment(&code);
-                        }
-                        code = rmc::py::remove_comment(&code, &remove_comments);
-                    }
-                    "ps1" => {
-                        if *remove_multiline_comment {
-                            code = rmc::ps::remove_multiline_comment(&code);
-                        }
-                        code = rmc::ps::remove_comment(&code, &remove_comments);
-                    }
-                    "psd1" => {
-                        if *remove_multiline_comment {
-                            code = rmc::ps::remove_multiline_comment(&code);
-                        }
-                        code = rmc::ps::remove_comment(&code, &remove_comments);
-                    }
-                    "psm1" => {
-                        if *remove_multiline_comment {
-                            code = rmc::ps::remove_multiline_comment(&code);
-                        }
-                        code = rmc::ps::remove_comment(&code, &remove_comments);
-                    }
-                    "xlsm" => {
-                        // EDIT: 240310 calamine で、vba コードを取得し、.bas ファイルで出力する。
-                    }
-                    _ => {
-                        // INFO: 240310 .json など、コピペするだけのファイル。  // FIXME: 240310 この場合、わざわざテキストファイルとして開く必要がない気がしてきた。エラーの温床だし。
-                    }
-                }
-
-                // [START] create dist basedir
-                let dst = Path::new(dst);
-                let base_path = dst
-                    .parent()
-                    .unwrap();
-                fs::create_dir_all(base_path).unwrap();  // HACK: 240218 (あまり考えられないが) 重複したフォルダを操作する場合に処理止めていいかも？
-                // [END] create dist basedir
-                
-                // [START] save text file
-                let mut file = File::create(dst)
-                    .expect("file not found.");
             
-                write!(file, "{}", code)
-                    .expect("cannot write.");
-                // [END] save text file
-
-                Ok(())
-
-            } else {
-                Err(format!("Fail to open file -> {}", src).into())
+            // [START] create dist basedir
+            let dst = Path::new(dst);
+            let base_path = dst
+                .parent()
+                .unwrap();
+            fs::create_dir_all(base_path).unwrap();  // HACK: 240218 (あまり考えられないが) 重複したフォルダを操作する場合に処理止めていいかも？
+            // [END] create dist basedir
+            
+            match ext {
+                "xlsm" => {
+                    let bas_file_vec = opf::xlsm::extract_bas(src);
+                    // EDIT: 240311 .bas ファイルを、.xlsm に格納する形で処理せよ。
+                    for mut bas_file in bas_file_vec {
+                        println!("before\n{:?}\n--------------------", bas_file);
+                        bas_file.remove_comment(&remove_comments);
+                        println!("after\n{:?}", bas_file);
+                    }
+                    Ok(())
+                },
+                _ => {
+                    if let Ok(mut code) = opf::text::open_file(&src) {
+                        match ext {
+                            "py" => {
+                                if *remove_multiline_comment {
+                                    code = rmc::py::remove_multiline_comment(&code);
+                                }
+                                code = rmc::py::remove_comment(&code, &remove_comments);
+                            }
+                            "ps1" => {
+                                if *remove_multiline_comment {
+                                    code = rmc::ps::remove_multiline_comment(&code);
+                                }
+                                code = rmc::ps::remove_comment(&code, &remove_comments);
+                            }
+                            "psd1" => {
+                                if *remove_multiline_comment {
+                                    code = rmc::ps::remove_multiline_comment(&code);
+                                }
+                                code = rmc::ps::remove_comment(&code, &remove_comments);
+                            }
+                            "psm1" => {
+                                if *remove_multiline_comment {
+                                    code = rmc::ps::remove_multiline_comment(&code);
+                                }
+                                code = rmc::ps::remove_comment(&code, &remove_comments);
+                            }
+                            _ => {
+                                // INFO: 240310 .json など、コピペするだけのファイル。  // FIXME: 240310 この場合、わざわざテキストファイルとして開く必要がない気がしてきた。エラーの温床だし。
+                            }
+                        }
+                        
+                        // [START] save text file
+                        let mut file = File::create(dst)
+                            .expect("file not found.");
+                    
+                        write!(file, "{}", code)
+                            .expect("cannot write.");
+                        // [END] save text file
+        
+                        Ok(())
+        
+                    } else {
+                        Err(format!("Fail to open file -> {}", src).into())
+                    }
+                },
             }
         } else {
             Err(format!("").into())  // FIXME: 240228 ここの運用が少し微妙かも？taraget_ext でないファイルパスを渡すな、と。
         }
     } else {
-        Err(format!("No Extension -? {}", src).into())  // INFO: 240228 拡張子を持たないテキストファイルは対象としない前提とした。
+        Err(format!("No Extension ? {}", src).into())  // INFO: 240228 拡張子を持たないテキストファイルは対象としない前提とした。
     }
 }
 
