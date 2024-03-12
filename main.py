@@ -2,6 +2,7 @@ import win32com.client
 import os
 import glob
 from typing import Any
+import argparse
 
 
 def insert_vba_code(src_excel_with_macro: str, bas_src_dir: str, dst: str, *, is_visible: bool=False) -> None:
@@ -63,9 +64,23 @@ def insert_vba_code(src_excel_with_macro: str, bas_src_dir: str, dst: str, *, is
     # [END] save and quit
 
 
-if __name__ == '__main__':  # EDIT: 240312 呼び出し実行で、Rust が呼び出しやすいようにすること。(argParser ???)
+if __name__ == '__main__':
+    """
+    Ex. python .\main.py --src "./misc/macro_sample_001.xlsm" --bas-dir "./dst_rmc/20240312_120734/macro_sample_001" --dst "dst.xlsm"
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--src', type=str, help='path of excel macro file')
+    parser.add_argument('--bas-dir', type=str, help='base dir with .bas file')
+    parser.add_argument('--dst', type=str, help='save path with macro with removed comment')
+
+    args = parser.parse_args()
+
+    assert args.src is not None, 'ArgError: args.src must not be None ...'
+    assert args.bas_dir is not None, 'ArgError: args.bas_dir must not be None ...'
+    assert args.dst is not None, 'ArgError: args.dst must not be None ...'
+
     insert_vba_code(
-        src_excel_with_macro='./misc/macro_sample_001.xlsm',
-        bas_src_dir='./dst_rmc/20240312_120734/macro_sample_001',
-        dst='./dst_rmc/20240312_120734/macro_sample_001_edit.xlsm',
+        src_excel_with_macro=args.src,
+        bas_src_dir=args.bas_dir,
+        dst=args.dst,
     )
