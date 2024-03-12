@@ -5,6 +5,7 @@ from typing import Any
 import argparse
 
 
+# HACK: 240312 見通しが悪いので、workbook をアトリビュートにぶら下げてクラスで書くといいかも？
 def insert_vba_code(src_excel_with_macro: str, bas_src_dir: str, dst: str, *, is_visible: bool=False) -> None:
     """
     マクロファイルから VBA モジュールを全削除して、.bas ファイル から読みだした VBA モジュールを埋め込んで保存する。
@@ -28,12 +29,12 @@ def insert_vba_code(src_excel_with_macro: str, bas_src_dir: str, dst: str, *, is
     ------
     None
     """
-    assert src_excel_with_macro != dst, f'src_excel_with_macro must NOT be same with dst. src_excel_with_macro / dst -> {src_excel_with_macro}'  # INFO: 240312 上書き防止
-    assert os.path.exists(dst) == False, f'dst is already existed. dst -> {dst}'  # INFO: 240312 上書き防止
+    assert src_excel_with_macro != dst,  f'OverWriteWarning: "src_excel_with_macro" must NOT be same with "dst". "src_excel_with_macro" / "dst" -> {src_excel_with_macro}'
+    assert os.path.exists(dst) == False, f'OverWriteWarning: "dst" is already existed. dst -> {dst}'
 
     xl: Any = win32com.client.Dispatch('Excel.Application')
     xl.Visible = is_visible
-    workbook = xl.Workbooks.Open(os.path.abspath(src_excel_with_macro))  # INFO: 240310 絶対パスに直すこと。win32api のベースディレクトリで判定している気がする。
+    workbook = xl.Workbooks.Open(os.path.abspath(src_excel_with_macro))  # INFO: 240310 win32api may force to use abs path
 
     # [START] remove existed bas modules
     for vb_component in workbook.VBProject.VBComponents:
@@ -42,18 +43,28 @@ def insert_vba_code(src_excel_with_macro: str, bas_src_dir: str, dst: str, *, is
             workbook.VBProject.VBComponents.Remove(vb_component)
     # [END] remove existed bas modules
 
-    # [START] search .bas files and embed
     bas_path_list = glob.glob(f'{bas_src_dir}/*.bas')
     for bas_path in bas_path_list:
+
+        # [START] obtain vba_code
         with open(bas_path, 'r', encoding='utf-8') as f:
             vba_code = f.read()
+        module_name = os.path.splitext(os.path.basename(bas_path))[0]
+        vba_code = vba_code.replace(f'Attribute VB_Name = "{module_name}"\n', '')  # INFO: 240312 to remove header
+        # [END] obtain vba_code
 
+
+        # [START] add module
         VBEXT_CT_STDMODULE = 1
         xlmodule = workbook.VBProject.VBComponents.Add(VBEXT_CT_STDMODULE)
-        module_name = os.path.splitext(os.path.basename(bas_path))[0]
+
+        START_TO_DELETE_LINE_NUM = 1
+        last_to_delete_line_num: int = xlmodule.CodeModule.CountOfLines
+        xlmodule.CodeModule.DeleteLines(START_TO_DELETE_LINE_NUM, last_to_delete_line_num)  # INFO: 240312 to remove "Option Explicit" added by VBE
+        
         xlmodule.Name = module_name
         xlmodule.CodeModule.AddFromString(vba_code)
-    # [END] search .bas files and embed
+        # [END] add module
 
     # [START] save and quit
     dst = os.path.abspath(dst)
