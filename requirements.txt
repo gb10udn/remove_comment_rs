@@ -1,0 +1,5 @@
+pyinstaller == 6.5.0
+pywin32 == 306
+
+mypy
+types-pywin32

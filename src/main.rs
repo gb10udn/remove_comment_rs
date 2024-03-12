@@ -83,7 +83,7 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
             let base_path = dst
                 .parent()
                 .unwrap();
-            fs::create_dir_all(base_path).unwrap();  // HACK: 240218 (あまり考えられないが) 重複したフォルダを操作する場合に処理止めていいかも？
+            fs::create_dir_all(base_path).unwrap();
             // [END] create dist basedir
             
             match ext {
@@ -96,6 +96,7 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
                         dst_bas.push(dst.file_stem().unwrap().to_string_lossy().to_string());
                         bas_file.save(&dst_bas.to_string_lossy().to_string())?;
                     }
+                    // EDIT: 240311 win32.api で、.bas ファイルを埋め込んだ、.xlsm ファイルを生成する。 (.exe ??? or .py ???)
                     Ok(())
                 },
                 _ => {
