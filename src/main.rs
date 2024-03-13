@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result �
         .to_string();
     temp_dst.push(&now);
     
-    if src_.is_file() {
+    if src_.is_file() {  // HACK: 240313 単体ファイルでも、ベースディレクトリ指定でも、Vec 型に格納してから処理開始して、データフローを統一するとすっきり書けるかも？
         temp_dst.push(src_.file_name().unwrap());
         let dst = temp_dst.to_string_lossy().to_string();
         match try_to_remove_comment_and_save_one(&src, &dst, &config.remove_comments, &config.target_extensions, &config.remove_multiline_comment) {
@@ -72,6 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result �
 }
 
 
+// HACK: 240313 コンパクトにせよ。拡張子分岐のところが長いので、別関数にくくりだすとか？
 fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comments: &Vec<String>, target_extensions: &Vec<String>, remove_multiline_comment: &bool) -> Result<(), Box<dyn std::error::Error>> {
     let src_ = Path::new(src);
     if let Some(ext) = src_.extension() {
@@ -88,15 +89,20 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
             
             match ext {
                 "xlsm" => {
-                    let bas_file_vec = opf::xlsm::extract_bas(src);
+                    let bas_file_vec = opf::xlsm::retrieve_bas_file_name_and_code(src);
                     for mut bas_file in bas_file_vec {
                         bas_file.remove_comment(&remove_comments);
 
+                        // TODO: 240313 複数行コメント削除を実装して、ここに導入せよ。
+
                         let mut dst_bas = dst.parent().unwrap().to_path_buf();
                         dst_bas.push(dst.file_stem().unwrap().to_string_lossy().to_string());
-                        bas_file.save(&dst_bas.to_string_lossy().to_string())?;
+                        bas_file.save(&dst_bas.to_string_lossy().to_string())?;  // INFO: 240313 rust -> python へのデータはファイル渡しとする。  // HACK: 240313 インメモリ sqlite でローカルサーバー立てて実行するとかっこいい気がする。
                     }
-                    // EDIT: 240311 win32.api で、.bas ファイルを埋め込んだ、.xlsm ファイルを生成する。 (.exe ??? or .py ???)
+
+                    // FIXME: 240313 .replace(".xlsm", "") が少し強引と思うので、修正せよ。
+                    opf::xlsm::update_vba_code_with_removed_comments(src, &dst.to_string_lossy().to_string().replace(".xlsm", ""), &String::from("./test.xlsm"));
+
                     Ok(())
                 },
                 _ => {

@@ -3,3 +3,5 @@
 /.vscode
 /.venv
 *.exe
+*.xlsm
+!./misc/macro_sample_001.xlsm

@@ -6,7 +6,7 @@ import argparse
 
 
 class VbaHandler:
-    def __init__(self, src: str, *, is_visible=False):
+    def __init__(self, src: str, *, is_visible=False):  # TODO: 240313 ThisWorkbook モジュールへの処理も追加せよ。
         """
         マクロ付きエクセルブックの VBA を扱うためのクラス
         """
@@ -104,6 +104,7 @@ def update_vba_code(src_excel_with_macro: str, bas_src_dir: str, dst: str, *, is
 
 if __name__ == '__main__':
     """
+    # TODO: 240313 パスワードロックかけるといいかも？ビルド作業の補助になりそう。(https://qiita.com/feo52/items/150745ae0cc17cb5c866)
     Ex. python .\main.py --src "./misc/macro_sample_001.xlsm" --bas-dir "./dst_rmc/20240312_120734/macro_sample_001" --dst "dst.xlsm"
     """
     parser = argparse.ArgumentParser()
