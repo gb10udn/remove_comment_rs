@@ -8,7 +8,8 @@ import argparse
 class VbaHandler:
     def __init__(self, src: str, *, is_visible=False):  # TODO: 240313 ThisWorkbook モジュールへの処理も追加せよ。
         """
-        マクロ付きエクセルブックの VBA を扱うためのクラス
+        マクロ付きエクセルブックの VBA を扱うためのクラス。
+        特に、VBA モジュールの書き込み、削除を処理する。(Rust で処理実行できなかったため、Python の win32api を利用することにした。)
         """
         ext = os.path.splitext(src)[-1]
         assert ext == '.xlsm', f'ArgError: extension of "src" must be ".xlsm", not {ext}'

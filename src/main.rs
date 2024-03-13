@@ -101,7 +101,7 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
                     }
 
                     // FIXME: 240313 .replace(".xlsm", "") が少し強引と思うので、修正せよ。
-                    opf::xlsm::update_vba_code_with_removed_comments(src, &dst.to_string_lossy().to_string().replace(".xlsm", ""), &String::from("./test.xlsm"));
+                    rmc::xlsm::update_vba_code_with_removed_comments(src, &dst.to_string_lossy().to_string().replace(".xlsm", ""), &String::from("./test.xlsm"));
 
                     Ok(())
                 },
