@@ -7,8 +7,6 @@ pub fn retrieve_bas_file_name_and_code(path: &String) -> Vec<BasFile> {
     let mut workbook: Xlsx<_> = open_workbook(path).expect("Cannot open file");  // HACK: 240311 path が非存在のケースを考え、Result<T> で返すのが良い気もする。
     if let Some(Ok(vba)) = workbook.vba_project() {
         let module_names = vba.get_module_names();
-        println!("{:?}", module_names);
-
         for module_name in module_names {
             let code = vba.get_module(module_name)
                 .unwrap()
