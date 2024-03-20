@@ -97,11 +97,9 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
 
                         let mut dst_bas = dst.parent().unwrap().to_path_buf();
                         dst_bas.push(dst.file_stem().unwrap().to_string_lossy().to_string());
-                        bas_file.save(&dst_bas.to_string_lossy().to_string())?;  // INFO: 240313 rust -> python へのデータはファイル渡しとする。  // HACK: 240313 インメモリ sqlite でローカルサーバー立てて実行するとかっこいい気がする。
+                        bas_file.save(&dst_bas.to_string_lossy().to_string())?;  // INFO: 240313 rust -> python へのデータはファイル渡しとする。
                     }
-
-                    // FIXME: 240313 .replace(".xlsm", "") が少し強引と思うので、修正せよ。
-                    rmc::xlsm::update_vba_code_with_removed_comments(src, &dst.to_string_lossy().to_string().replace(".xlsm", ""), &String::from("./test.xlsm"));
+                    rmc::xlsm::update_vba_code_with_removed_comments(src, &dst.to_string_lossy().to_string().replace(".xlsm", ""), &dst.to_string_lossy().to_string());
 
                     Ok(())
                 },
