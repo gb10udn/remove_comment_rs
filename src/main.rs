@@ -1,12 +1,14 @@
 use std::io::{Write, BufReader};
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use chrono::Local;
 use walkdir::WalkDir;
 use clap::Parser;
+use serde::{Deserialize, Serialize};
+
 mod rmc;
 mod opf;
-use serde::{Deserialize, Serialize};
 
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result 返すのでなくて、結果を表示する方が、ユーザーにとって優しいかもしれない？
@@ -27,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result �
 
     let path_vec = retrieve_path_vec(&src, &config.target_extensions);
     let mut error_messages: Vec<String> = vec![];
-    for fpath in path_vec {  // TODO: 240228 最後に、ファイル何個が存在し、ターゲットのテキストファイルが何件で、処理したのが何件で、、、を表示するといいかも？
+    for fpath in path_vec {
         let dst = fpath.replace(&src, &dst_base_dir);
         if let Err(err) = try_to_remove_comment_and_save_one(&fpath, &dst, &config.remove_comments, &config.target_extensions, &config.remove_multiline_comment) {
             error_messages.push(err.to_string());
@@ -62,17 +64,17 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
             
             match ext {
                 "xlsm" => {
-                    let bas_file_vec = opf::xlsm::retrieve_bas_file_name_and_code(src);
-                    for mut bas_file in bas_file_vec {
-                        bas_file.remove_comment(&remove_comments);
-
-                        // TODO: 240313 複数行コメント削除を実装して、ここに導入せよ。
-
-                        let mut dst_bas = dst.parent().unwrap().to_path_buf();
-                        dst_bas.push(dst.file_stem().unwrap().to_string_lossy().to_string());
-                        bas_file.save(&dst_bas.to_string_lossy().to_string())?;  // INFO: 240313 rust -> python へのデータはファイル渡しとする。
-                    }
-                    rmc::xlsm::update_vba_code_with_removed_comments(src, &dst.to_string_lossy().to_string().replace(".xlsm", ""), &dst.to_string_lossy().to_string());
+                    let _ = Command::new("./vba.exe")
+                    .args([
+                        "--src",
+                        src as &str,
+                        "--dst",
+                        dst.to_str().unwrap(),
+                    ])
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())  // FIXME: 240313 エラー処理を記述する。(現状では、何も知らせないため不親切な仕様になってしまっている。)
+                    .spawn()
+                    .unwrap();
 
                     Ok(())
                 },
@@ -131,7 +133,7 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
     }
 }
 
-/// base_dir 配下のファイルを再帰的に検索し、そのパスのベクタ型を返す関数。
+/// src がディレクトリの場合、再帰的に検索したパスのベクタ型を、ファイルパスの場合、その要素を持ったベクタ型を返す関数。
 fn retrieve_path_vec(src: &String, target_extensions: &Vec<String>) -> Vec<String> {
     let src = remove_head_and_tail_double_quotation(src);
     let src = Path::new(&src);

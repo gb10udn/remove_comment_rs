@@ -21,7 +21,7 @@ class VbaHandler:
         self.workbook = self.xl.Workbooks.Open(self.abs_src)
     
 
-    def _remove_unnecessary_comment(self, src: str, *, remove_comments: list) -> str:
+    def _remove_unnecessary_comment(self, src: str, *, remove_comments: list) -> str:  # TODO: 240320 複数行コメント削除機能を追加する。
         pattern_str = '|'.join([r" *' *" + mark + '.*(?:\r?\n|$)' for mark in remove_comments])
         pattern_re = re.compile(pattern_str)
         return pattern_re.sub('\n', src)
