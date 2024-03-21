@@ -14,24 +14,13 @@ mod opf;
 fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result 返すのでなくて、結果を表示する方が、ユーザーにとって優しいかもしれない？
     let args = Args::parse();
     let src = args.src.expect("\n\nArgError: src must be given ...\n\n");
-        let config = open_config("./config.json")?;
+    let config = open_config("./config.json")?;
 
-    let mut temp_dst = PathBuf::from(r".\dst_rmc");
-    let now: String = Local::now()
-        .format("%Y%m%d_%H%M%S")
-        .to_string();  // HACK: 240320 次とのつながり (Ex. ビルド) を考えると、日付情報を入れるのは良くない気がしてきた。
-    temp_dst.push(&now);
-
-    let folder_name = Path::new(&src).file_name().unwrap();  // HACK: 240320 folder_name を削除を検討する。(file or dir での操作統一のため)
-    temp_dst.push(folder_name);
-
-    let dst_base_dir = temp_dst.to_string_lossy().to_string();
-
-    let path_vec = retrieve_path_vec(&src, &config.target_extensions);
+    let now = Local::now().format("%Y%m%d_%H%M%S").to_string();
+    let transfer_info_vec = retrieve_transfer_info_vec(&src, &now, &config.target_extensions);
     let mut error_messages: Vec<String> = vec![];
-    for fpath in path_vec {
-        let dst = fpath.replace(&src, &dst_base_dir);
-        if let Err(err) = try_to_remove_comment_and_save_one(&fpath, &dst, &config.remove_comments, &config.target_extensions, &config.remove_multiline_comment) {
+    for transfer_info in transfer_info_vec {
+        if let Err(err) = try_to_remove_comment_and_save_one(&transfer_info.src, &transfer_info.dst, &config.remove_comments, &config.target_extensions, &config.remove_multiline_comment) {
             error_messages.push(err.to_string());
         }
     }
@@ -43,7 +32,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result �
             Err(format!("{:?}", error_messages).into())
         },
     }
-    // TODO: 240220 フルパスでどこのファイルを処理したかは、別途 log ファイルに残してあげるといいような気もする。(.exe ダブルクリックで実施するなら、必須かもしれない？)
 }
 
 
@@ -133,16 +121,31 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
     }
 }
 
+#[derive(Debug, PartialEq)]
+struct TransferInfo {
+    src: String,
+    dst: String,
+}
+
 /// src がディレクトリの場合、再帰的に検索したパスのベクタ型を、ファイルパスの場合、その要素を持ったベクタ型を返す関数。
-fn retrieve_path_vec(src: &String, target_extensions: &Vec<String>) -> Vec<String> {
+fn retrieve_transfer_info_vec(src: &String, folder_name: &String, target_extensions: &Vec<String>) -> Vec<TransferInfo> {
     let src = remove_head_and_tail_double_quotation(src);
     let src = Path::new(&src);
 
-    let mut result: Vec<String> = vec![];
+    let mut temp_dst = PathBuf::from(r".\dst_rmc");
+    temp_dst.push(folder_name);
+
+    let mut result: Vec<TransferInfo> = vec![];
     if src.is_file() {
-        result.push(src.to_string_lossy().to_string())
-    
+        if let Some(ext) = src.extension() {
+            if target_extensions.contains(&ext.to_string_lossy().to_string()) {
+                let fname = src.file_name().unwrap().to_str().unwrap();
+                temp_dst.push(fname);
+                result.push(TransferInfo { src: src.to_string_lossy().to_string(), dst: temp_dst.to_str().unwrap().to_string()});
+            }
+        }
     } else {
+        let dst_base_dir = temp_dst.to_string_lossy().to_string();
         for entry in WalkDir::new(src) {
             if let Ok(val) = entry {
                 if val.path().is_file() {
@@ -150,7 +153,9 @@ fn retrieve_path_vec(src: &String, target_extensions: &Vec<String>) -> Vec<Strin
                         let ext = ext.to_str().unwrap();
                         if target_extensions.contains(&ext.to_string()) {
                             let fpath = val.path().to_string_lossy().to_string();
-                            result.push(fpath);
+                            let dst = fpath.replace(src.to_str().unwrap(), &dst_base_dir);
+                            let dst = Path::new(&dst);
+                            result.push(TransferInfo { src: fpath, dst: dst.to_string_lossy().to_string()});
                         }
                     }
                 }
@@ -160,7 +165,7 @@ fn retrieve_path_vec(src: &String, target_extensions: &Vec<String>) -> Vec<Strin
     result
 }
 
-fn remove_head_and_tail_double_quotation(arg: &String) -> String {
+fn remove_head_and_tail_double_quotation(arg: &String) -> String {  // FIXME: 240320 使用しない可能性が高まったので、削除してよい。
     let mut result = arg.clone();
     if result.ends_with("\n") == true {
         result.pop();  // INFO: 240113 標準入力で取得時の末尾の改行コードを除去するため。
@@ -207,14 +212,17 @@ mod tests {
     }
 
     #[test]
-    fn test_retrieve_path_vec() {
-        use crate::retrieve_path_vec;
+    fn test_retrieve_transfer_info_vec() {
+        use crate::retrieve_transfer_info_vec;
+        use crate::TransferInfo;
 
         let src = r".\misc";
         let target_extensions = vec![String::from("py")];
-        assert_eq!(retrieve_path_vec(&src.to_string(), &target_extensions), vec![String::from(r".\misc\piyo\sample_002.py"), String::from(r".\misc\sample_001.py"),]);
-        
-        let target_extensions = vec![String::from("ps")];  // INFO: 240221 ps を指定すると、py ファイルは取得しない。
-        assert_ne!(retrieve_path_vec(&src.to_string(), &target_extensions), vec![String::from(r".\misc\piyo\sample_002.py"), String::from(r".\misc\sample_001.py"),]);
+        let expected = vec![
+            TransferInfo { src: String::from(r".\misc\piyo\sample_002.py"), dst: String::from(r".\dst_rmc\test\piyo\sample_002.py") },
+            TransferInfo { src: String::from(r".\misc\sample_001.py"),      dst: String::from(r".\dst_rmc\test\sample_001.py") },
+        ];
+        let result = retrieve_transfer_info_vec(&src.to_string(), &String::from("test"), &target_extensions);
+        assert_eq!(result, expected);
     }
 }
