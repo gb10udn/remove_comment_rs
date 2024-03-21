@@ -52,19 +52,24 @@ fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comment
             
             match ext {
                 "xlsm" => {
-                    let _ = Command::new("./vba.exe")
-                    .args([
-                        "--src",
-                        src as &str,
-                        "--dst",
-                        dst.to_str().unwrap(),
-                    ])
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::piped())  // FIXME: 240313 エラー処理を記述する。(現状では、何も知らせないため不親切な仕様になってしまっている。)
-                    .spawn()
-                    .unwrap();
+                    let output = Command::new("./vba.exe")
+                        .args([
+                            "--src",
+                            src as &str,
+                            "--dst",
+                            dst.to_str().unwrap(),
+                        ])
+                        .stdout(Stdio::piped())
+                        .stderr(Stdio::piped())
+                        .output()
+                        .expect("\n\nFailed to execute command\n\n");
 
-                    Ok(())
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    if stderr != "" {
+                        Err(stderr.into())
+                    } else {
+                        Ok(())
+                    }
                 },
                 _ => {
                     if let Ok(mut code) = opf::text::open_file(&src) {
