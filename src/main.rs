@@ -44,12 +44,20 @@ fn remove_comment_and_save(transfer_info: &TransferInfo, remove_comments: &Vec<S
 
     match transfer_info.proc_type {
         ProcType::Xlsm => {
+            let remove_multiline_comment_flag: &str;
+            if remove_multiline_comment == &true {
+                remove_multiline_comment_flag = "1";
+            } else {
+                remove_multiline_comment_flag = "0";
+            }
             let output = Command::new("./vba.exe")
                 .args([
                     "--src",
                     &transfer_info.src as &str,
                     "--dst",
                     transfer_info.dst.as_str(),
+                    "--remove-multiline-comment",
+                    remove_multiline_comment_flag,
                 ])
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
@@ -65,7 +73,7 @@ fn remove_comment_and_save(transfer_info: &TransferInfo, remove_comments: &Vec<S
         },
         ProcType::Py => {
             let mut code = opf::text::open_file(&transfer_info.src).expect("");
-            if *remove_multiline_comment {
+            if remove_multiline_comment == &true {
                 code = rmc::py::remove_multiline_comment(&code);
             }
             code = rmc::py::remove_comment(&code, &remove_comments);
@@ -75,7 +83,7 @@ fn remove_comment_and_save(transfer_info: &TransferInfo, remove_comments: &Vec<S
         },
         ProcType::Ps => {
             let mut code = opf::text::open_file(&transfer_info.src).expect("");
-            if *remove_multiline_comment {
+            if remove_multiline_comment == &true {
                 code = rmc::ps::remove_multiline_comment(&code);
             }
             code = rmc::ps::remove_comment(&code, &remove_comments);

@@ -1,9 +1,9 @@
 import win32com.client
 import os
 import json
-import re
 from typing import Any
 import argparse
+import rm
 
 
 class VbaHandler:
@@ -21,27 +21,24 @@ class VbaHandler:
         self.workbook = self.xl.Workbooks.Open(self.abs_src)
     
 
-    def _remove_unnecessary_comment(self, src: str, *, remove_comments: list) -> str:  # TODO: 240320 複数行コメント削除機能を追加する。
-        pattern_str = '|'.join([r" *' *" + mark + '.*(?:\r?\n|$)' for mark in remove_comments])
-        pattern_re = re.compile(pattern_str)
-        return pattern_re.sub('\n', src)
-    
-
-    def update_vba_code_with_removed_unnecessary_comments(self, *, remove_comments: list):
+    def update_vba_code_with_removed_unnecessary_comments(self, *, remove_comments: list, remove_multiline_comment: bool):
         for component in self.workbook.VBProject.VBComponents:
             MODULE_TYPE = 1  # HACK: 240320 ThisWorkbook モジュールへの処理も追加せよ。
             if component.Type == MODULE_TYPE:
                 # [START] obtain new_code
                 START_LINE_IDX = 1
                 last_line_idx = component.CodeModule.CountOfLines
-                existed_code = component.CodeModule.Lines(START_LINE_IDX, last_line_idx)
-                new_code = self._remove_unnecessary_comment(existed_code, remove_comments=remove_comments)
+                code = component.CodeModule.Lines(START_LINE_IDX, last_line_idx)
+                code = rm.remove_unnecessary_comment(code, remove_comments=remove_comments)
+
+                if remove_multiline_comment == True:
+                    code = rm.remove_multiline_comment(code)
                 # [END] obtain new_code
 
 
                 # [START] update new code
                 component.CodeModule.DeleteLines(START_LINE_IDX, last_line_idx)
-                component.CodeModule.AddFromString(new_code)
+                component.CodeModule.AddFromString(code)
                 # [END] update new code
     
 
@@ -62,7 +59,7 @@ class VbaHandler:
 ####
         
 
-def update_vba_code_with_removed_unnecessary_comments(src: str, dst: str, *, remove_comments: list[str], is_visible: bool=False) -> None:
+def update_vba_code_with_removed_unnecessary_comments(src: str, dst: str, *, remove_comments: list[str], remove_multiline_comment: bool=True, is_visible: bool=False) -> None:
     """
     マクロファイルから VBA モジュールを全削除して、.bas ファイル から読みだした VBA モジュールを埋め込んで保存する。
 
@@ -85,7 +82,7 @@ def update_vba_code_with_removed_unnecessary_comments(src: str, dst: str, *, rem
     None
     """
     vba_handler = VbaHandler(src=src, is_visible=is_visible)
-    vba_handler.update_vba_code_with_removed_unnecessary_comments(remove_comments=remove_comments)
+    vba_handler.update_vba_code_with_removed_unnecessary_comments(remove_comments=remove_comments, remove_multiline_comment=remove_multiline_comment)
     vba_handler.save(dst=dst)
     vba_handler.quit()
 
@@ -97,12 +94,16 @@ if __name__ == '__main__':  # TODO: 240313 パスワードロックかけると�
     parser = argparse.ArgumentParser()
     parser.add_argument('--src', type=str, help='path of excel macro file')
     parser.add_argument('--dst', type=str, help='save path with macro with removed comment')
+    parser.add_argument('--remove-multiline-comment', type=int)
 
     args = parser.parse_args()
 
     assert args.src is not None, 'ArgError: args.src must not be None ...'
     assert args.dst is not None, 'ArgError: args.dst must not be None ...'
+    assert args.remove_multiline_comment is not None, 'ArgError: args.remove_multiline_comment must not be None ...'
+
     assert args.src != args.dst, f'DuplicateError: --src and --dst must NOT be same ... -> "{args.src}"'
+    assert args.remove_multiline_comment in [0, 1], f'ArgError: --remove-multiline-comment must be 0 or 1, not {args.remove_multiline_comment}'
 
     try:
         CONFIG_PATH = './config.json'
@@ -122,4 +123,5 @@ if __name__ == '__main__':  # TODO: 240313 パスワードロックかけると�
         src=args.src,
         dst=args.dst,
         remove_comments=remove_comments,
+        remove_multiline_comment=bool(args.remove_multiline_comment),
     )

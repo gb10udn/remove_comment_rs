@@ -3,3 +3,4 @@ pywin32 == 306
 
 mypy
 types-pywin32
+pytest
