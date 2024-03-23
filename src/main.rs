@@ -11,16 +11,16 @@ mod rmc;
 mod opf;
 
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result 返すのでなくて、結果を表示する方が、ユーザーにとって優しいかもしれない？
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let src = args.src.expect("\n\nArgError: src must be given ...\n\n");
     let config = open_config("./config.json")?;
 
     let now = Local::now().format("%Y%m%d_%H%M%S").to_string();
-    let transfer_info_vec = retrieve_transfer_info_vec(&src, &now, &config.target_extensions);
+    let transfer_info_vec = retrieve_transfer_info_vec(&src, &now, &config.copy_extensions);
     let mut error_messages: Vec<String> = vec![];
     for transfer_info in transfer_info_vec {
-        if let Err(err) = try_to_remove_comment_and_save_one(&transfer_info.src, &transfer_info.dst, &config.remove_comments, &config.target_extensions, &config.remove_multiline_comment) {
+        if let Err(err) = remove_comment_and_save(&transfer_info,  &config.remove_comments, &config.remove_multiline_comment) {
             error_messages.push(err.to_string());
         }
     }
@@ -35,105 +35,83 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {  // TODO: 240228 result �
 }
 
 
-// HACK: 240313 コンパクトにせよ。拡張子分岐のところが長いので、別関数にくくりだすとか？
-fn try_to_remove_comment_and_save_one(src: &String, dst: &String, remove_comments: &Vec<String>, target_extensions: &Vec<String>, remove_multiline_comment: &bool) -> Result<(), Box<dyn std::error::Error>> {
-    let src_ = Path::new(src);
-    if let Some(ext) = src_.extension() {
-        let ext = ext.to_str().unwrap();
-        if target_extensions.contains(&ext.to_string()) {  // HACK: 240228 target ってのが、コメント削除のことか、コピー対象のことかが分かりにくい。target_text_file_extensions の方が長いけどわかりやすいかも？
-            
-            // [START] create dist basedir
-            let dst = Path::new(dst);
-            let base_path = dst
-                .parent()
-                .unwrap();
+fn remove_comment_and_save(transfer_info: &TransferInfo, remove_comments: &Vec<String>, remove_multiline_comment: &bool) -> Result<(), Box<dyn std::error::Error>> {
+    if transfer_info.proc_type != ProcType::Skip {
+        if let Some(base_path) = Path::new(&transfer_info.dst).parent() {
             fs::create_dir_all(base_path).unwrap();
-            // [END] create dist basedir
-            
-            match ext {
-                "xlsm" => {
-                    let output = Command::new("./vba.exe")
-                        .args([
-                            "--src",
-                            src as &str,
-                            "--dst",
-                            dst.to_str().unwrap(),
-                        ])
-                        .stdout(Stdio::piped())
-                        .stderr(Stdio::piped())
-                        .output()
-                        .expect("\n\nFailed to execute command\n\n");
-
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    if stderr != "" {
-                        Err(stderr.into())
-                    } else {
-                        Ok(())
-                    }
-                },
-                _ => {
-                    if let Ok(mut code) = opf::text::open_file(&src) {
-                        match ext {
-                            "py" => {
-                                if *remove_multiline_comment {
-                                    code = rmc::py::remove_multiline_comment(&code);
-                                }
-                                code = rmc::py::remove_comment(&code, &remove_comments);
-                            }
-                            "ps1" => {
-                                if *remove_multiline_comment {
-                                    code = rmc::ps::remove_multiline_comment(&code);
-                                }
-                                code = rmc::ps::remove_comment(&code, &remove_comments);
-                            }
-                            "psd1" => {
-                                if *remove_multiline_comment {
-                                    code = rmc::ps::remove_multiline_comment(&code);
-                                }
-                                code = rmc::ps::remove_comment(&code, &remove_comments);
-                            }
-                            "psm1" => {
-                                if *remove_multiline_comment {
-                                    code = rmc::ps::remove_multiline_comment(&code);
-                                }
-                                code = rmc::ps::remove_comment(&code, &remove_comments);
-                            }
-                            _ => {
-                                // INFO: 240310 .json など、コピペするだけのファイル。  // FIXME: 240310 この場合、わざわざテキストファイルとして開く必要がない気がしてきた。エラーの温床だし。
-                            }
-                        }
-                        
-                        // [START] save text file
-                        let mut file = File::create(dst)
-                            .expect("file not found.");
-                    
-                        write!(file, "{}", code)
-                            .expect("cannot write.");
-                        // [END] save text file
-        
-                        Ok(())
-        
-                    } else {
-                        Err(format!("Fail to open file -> {}", src).into())
-                    }
-                },
-            }
-        } else {
-            Err(format!("").into())  // FIXME: 240228 ここの運用が少し微妙かも？taraget_ext でないファイルパスを渡すな、と。
         }
-    } else {
-        Err(format!("No Extension ? {}", src).into())  // INFO: 240228 拡張子を持たないテキストファイルは対象としない前提とした。
+    }
+
+    match transfer_info.proc_type {
+        ProcType::Xlsm => {
+            let output = Command::new("./vba.exe")
+                .args([
+                    "--src",
+                    &transfer_info.src as &str,
+                    "--dst",
+                    transfer_info.dst.as_str(),
+                ])
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .output()
+                .expect("\n\nFailed to execute command\n\n");
+
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            if stderr != "" {
+                Err(stderr.into())
+            } else {
+                Ok(())
+            }
+        },
+        ProcType::Py => {
+            let mut code = opf::text::open_file(&transfer_info.src).expect("");
+            if *remove_multiline_comment {
+                code = rmc::py::remove_multiline_comment(&code);
+            }
+            code = rmc::py::remove_comment(&code, &remove_comments);
+            let mut file = File::create(&transfer_info.dst).expect("file not found.");
+            write!(file, "{}", code).expect("cannot write.");
+            Ok(())
+        },
+        ProcType::Ps => {
+            let mut code = opf::text::open_file(&transfer_info.src).expect("");
+            if *remove_multiline_comment {
+                code = rmc::ps::remove_multiline_comment(&code);
+            }
+            code = rmc::ps::remove_comment(&code, &remove_comments);
+            let mut file = File::create(&transfer_info.dst).expect("file not found.");
+            write!(file, "{}", code).expect("cannot write.");
+            Ok(())
+        }
+        ProcType::Copy => {
+            fs::copy(&transfer_info.src, &transfer_info.dst)?;
+            Ok(())
+        }
+        ProcType::Skip => {
+            Ok(())
+        }
     }
 }
+
 
 #[derive(Debug, PartialEq)]
 struct TransferInfo {
     src: String,
     dst: String,
+    proc_type: ProcType,
 }
 
-/// src がディレクトリの場合、再帰的に検索したパスのベクタ型を、ファイルパスの場合、その要素を持ったベクタ型を返す関数。
-fn retrieve_transfer_info_vec(src: &String, folder_name: &String, target_extensions: &Vec<String>) -> Vec<TransferInfo> {
+#[derive(Debug, PartialEq)]
+enum ProcType {
+    Py,
+    Ps,
+    Xlsm,
+    Copy,
+    Skip,
+}
+
+/// src がディレクトリの場合は再帰的に検索、ファイルパスの場合はその値を持った TransferInfo のベクタ型を返す関数。
+fn retrieve_transfer_info_vec(src: &String, folder_name: &String, copy_extensions: &Vec<String>) -> Vec<TransferInfo> {
     let src = remove_head_and_tail_double_quotation(src);
     let src = Path::new(&src);
 
@@ -142,33 +120,55 @@ fn retrieve_transfer_info_vec(src: &String, folder_name: &String, target_extensi
 
     let mut result: Vec<TransferInfo> = vec![];
     if src.is_file() {
-        if let Some(ext) = src.extension() {
-            if target_extensions.contains(&ext.to_string_lossy().to_string()) {
-                let fname = src.file_name().unwrap().to_str().unwrap();
-                temp_dst.push(fname);
-                result.push(TransferInfo { src: src.to_string_lossy().to_string(), dst: temp_dst.to_str().unwrap().to_string()});
-            }
-        }
+        let fname = src.file_name().unwrap().to_str().unwrap();
+        temp_dst.push(fname);
+        result.push(TransferInfo { 
+            src: src.to_string_lossy().to_string(),
+            dst: temp_dst.to_str().unwrap().to_string(),
+            proc_type: obtain_proc_type(src, copy_extensions),
+        });
     } else {
         let dst_base_dir = temp_dst.to_string_lossy().to_string();
         for entry in WalkDir::new(src) {
             if let Ok(val) = entry {
                 if val.path().is_file() {
-                    if let Some(ext) = val.path().extension() {
-                        let ext = ext.to_str().unwrap();
-                        if target_extensions.contains(&ext.to_string()) {
-                            let fpath = val.path().to_string_lossy().to_string();
-                            let dst = fpath.replace(src.to_str().unwrap(), &dst_base_dir);
-                            let dst = Path::new(&dst);
-                            result.push(TransferInfo { src: fpath, dst: dst.to_string_lossy().to_string()});
-                        }
-                    }
+                    let fpath = val.path().to_string_lossy().to_string();
+                    let dst = fpath.replace(src.to_str().unwrap(), &dst_base_dir);
+                    let dst = Path::new(&dst);
+                    result.push(TransferInfo {
+                        src: fpath,
+                        dst: dst.to_string_lossy().to_string(),
+                        proc_type: obtain_proc_type(val.path(), copy_extensions)
+                    });
                 }
             }
         }
     }
     result
 }
+
+
+fn obtain_proc_type(path: &Path, copy_extensions: &Vec<String>) -> ProcType {
+    if let Some(ext) = path.extension() {
+        match ext.to_str().expect("Fail to obtain extension ...") {
+            "xlsm" => ProcType::Xlsm,
+            "ps1" => ProcType::Ps,
+            "psd1" => ProcType::Ps,
+            "psm1" => ProcType::Ps,
+            "py" => ProcType::Py,
+            _ => {
+                if copy_extensions.contains(&ext.to_string_lossy().to_string()) {
+                    ProcType::Copy
+                } else {
+                    ProcType::Skip
+                }
+            }
+        }
+    } else {
+        ProcType::Skip
+    }
+}
+
 
 fn remove_head_and_tail_double_quotation(arg: &String) -> String {  // FIXME: 240320 使用しない可能性が高まったので、削除してよい。
     let mut result = arg.clone();
@@ -188,8 +188,9 @@ fn remove_head_and_tail_double_quotation(arg: &String) -> String {  // FIXME: 24
 struct Config {
     remove_multiline_comment: bool,
     remove_comments: Vec<String>,
-    target_extensions: Vec<String>,
+    copy_extensions: Vec<String>,
 }
+
 
 fn open_config(path: &str) -> Result<Config, Box<dyn std::error::Error>> {
     let file = File::open(path)?;
@@ -198,6 +199,7 @@ fn open_config(path: &str) -> Result<Config, Box<dyn std::error::Error>> {
     Ok(config)
 }
 
+
 #[derive(Parser, Debug)]
 #[command()]
 struct Args {
@@ -205,6 +207,7 @@ struct Args {
     #[arg(short = 's', long)]
     src: Option<String>,
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -220,14 +223,31 @@ mod tests {
     fn test_retrieve_transfer_info_vec() {
         use crate::retrieve_transfer_info_vec;
         use crate::TransferInfo;
+        use crate::ProcType;
 
         let src = r".\misc";
-        let target_extensions = vec![String::from("py")];
+        let copy_extensions = vec![String::from("py")];
         let expected = vec![
-            TransferInfo { src: String::from(r".\misc\piyo\sample_002.py"), dst: String::from(r".\dst_rmc\test\piyo\sample_002.py") },
-            TransferInfo { src: String::from(r".\misc\sample_001.py"),      dst: String::from(r".\dst_rmc\test\sample_001.py") },
+            TransferInfo { src: String::from(r".\misc\piyo\sample_002.py"), dst: String::from(r".\dst_rmc\test\piyo\sample_002.py"), proc_type: ProcType::Py },
+            TransferInfo { src: String::from(r".\misc\sample_001.py"),      dst: String::from(r".\dst_rmc\test\sample_001.py")     , proc_type: ProcType::Py },
         ];
-        let result = retrieve_transfer_info_vec(&src.to_string(), &String::from("test"), &target_extensions);
+        let temp_result = retrieve_transfer_info_vec(&src.to_string(), &String::from("test"), &copy_extensions);
+        let mut result = vec![];
+        for res in temp_result {
+            if res.proc_type == ProcType::Py {
+                result.push(res);
+            }
+        }
         assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_obtain_proc_type() {
+        use crate::obtain_proc_type;
+        use crate::ProcType;
+        use std::path::Path;
+
+        let result = obtain_proc_type(Path::new("hoge.py"), &vec![]);
+        assert_eq!(result, ProcType::Py)
     }
 }

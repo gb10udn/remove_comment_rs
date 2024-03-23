@@ -1,5 +1,5 @@
 {
     "remove_multiline_comment": true,
     "remove_comments": ["TODO:", "FIXME:", "EDIT:", "HACK:", "INFO:", "[START]", "[END]"],
-    "target_extensions": ["py", "ps1", "psd1", "psm1", "xlsm", "txt", "json"]
+    "copy_extensions": ["txt", "json"]
 }
