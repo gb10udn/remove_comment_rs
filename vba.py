@@ -23,7 +23,7 @@ class VbaHandler:
 
     def update_vba_code_with_removed_unnecessary_comments(self, *, remove_comments: list, remove_multiline_comment: bool):
         for component in self.workbook.VBProject.VBComponents:
-            MODULE_TYPE = 1  # HACK: 240320 ThisWorkbook モジュールへの処理も追加せよ。
+            MODULE_TYPE = 1  # TODO: 240320 ThisWorkbook モジュールへの処理も追加せよ。
             if component.Type == MODULE_TYPE:
                 # [START] obtain new_code
                 START_LINE_IDX = 1

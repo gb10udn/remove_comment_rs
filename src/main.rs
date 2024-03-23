@@ -120,7 +120,6 @@ enum ProcType {
 
 /// src がディレクトリの場合は再帰的に検索、ファイルパスの場合はその値を持った TransferInfo のベクタ型を返す関数。
 fn retrieve_transfer_info_vec(src: &String, folder_name: &String, copy_extensions: &Vec<String>) -> Vec<TransferInfo> {
-    let src = remove_head_and_tail_double_quotation(src);
     let src = Path::new(&src);
 
     let mut temp_dst = PathBuf::from(r".\dst_rmc");
@@ -178,20 +177,6 @@ fn obtain_proc_type(path: &Path, copy_extensions: &Vec<String>) -> ProcType {
 }
 
 
-fn remove_head_and_tail_double_quotation(arg: &String) -> String {  // FIXME: 240320 使用しない可能性が高まったので、削除してよい。
-    let mut result = arg.clone();
-    if result.ends_with("\n") == true {
-        result.pop();  // INFO: 240113 標準入力で取得時の末尾の改行コードを除去するため。
-    }
-    if result.starts_with("\"") {
-        result.remove(0);
-    }
-    if result.ends_with("\"") {
-        result.pop();
-    }
-    result
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 struct Config {
     remove_multiline_comment: bool,
@@ -219,14 +204,6 @@ struct Args {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn test_remove_head_and_tail_double_quotation() { 
-        use crate::remove_head_and_tail_double_quotation;
-
-        assert_eq!(remove_head_and_tail_double_quotation(&String::from("abc\n")), String::from("abc"));
-        assert_eq!(remove_head_and_tail_double_quotation(&String::from("\"abc\"\n")), String::from("abc"));
-    }
-
     #[test]
     fn test_retrieve_transfer_info_vec() {
         use crate::retrieve_transfer_info_vec;
