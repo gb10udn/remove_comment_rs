@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let now = Local::now().format("%Y%m%d_%H%M%S").to_string();
     let transfer_info_vec = retrieve_transfer_info_vec(&src, &now, &config.copy_extensions);
     let mut error_messages: Vec<String> = vec![];
-    for transfer_info in transfer_info_vec {
+    for transfer_info in transfer_info_vec {  // TODO: 240324 並行 or 並列処理にする。(エラー取得も検討せよ)
         if let Err(err) = remove_comment_and_save(&transfer_info,  &config.remove_comments, &config.remove_multiline_comment) {
             error_messages.push(err.to_string());
         }
@@ -72,23 +72,23 @@ fn remove_comment_and_save(transfer_info: &TransferInfo, remove_comments: &Vec<S
             }
         },
         ProcType::Py => {
-            let mut code = opf::text::open_file(&transfer_info.src).expect("");
+            let mut code = opf::text::open_file(&transfer_info.src)?;
             if remove_multiline_comment == &true {
                 code = rmc::py::remove_multiline_comment(&code);
             }
             code = rmc::py::remove_comment(&code, &remove_comments);
-            let mut file = File::create(&transfer_info.dst).expect("file not found.");
-            write!(file, "{}", code).expect("cannot write.");
+            let mut file = File::create(&transfer_info.dst)?;
+            write!(file, "{}", code)?;
             Ok(())
         },
         ProcType::Ps => {
-            let mut code = opf::text::open_file(&transfer_info.src).expect("");
+            let mut code = opf::text::open_file(&transfer_info.src)?;
             if remove_multiline_comment == &true {
                 code = rmc::ps::remove_multiline_comment(&code);
             }
             code = rmc::ps::remove_comment(&code, &remove_comments);
-            let mut file = File::create(&transfer_info.dst).expect("file not found.");
-            write!(file, "{}", code).expect("cannot write.");
+            let mut file = File::create(&transfer_info.dst)?;
+            write!(file, "{}", code)?;
             Ok(())
         }
         ProcType::Copy => {

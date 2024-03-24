@@ -7,7 +7,7 @@ import rm
 
 
 class VbaHandler:
-    def __init__(self, src: str, *, is_visible=False):
+    def __init__(self, src: str, *, is_visible=False):  # TODO: 240324 TEST と付いたプロシージャも削除するとよいかも？
         """
         マクロ付きエクセルブックの VBA を扱うためのクラス。
         特に、VBA モジュールの書き込み、削除を処理する。(Rust で処理実行できなかったため、Python の win32api を利用することにした。)
@@ -23,8 +23,9 @@ class VbaHandler:
 
     def update_vba_code_with_removed_unnecessary_comments(self, *, remove_comments: list, remove_multiline_comment: bool):
         for component in self.workbook.VBProject.VBComponents:
-            MODULE_TYPE = 1  # TODO: 240320 ThisWorkbook モジュールへの処理も追加せよ。
-            if component.Type == MODULE_TYPE:
+            MODULE_TYPE = 1
+            EXCEL_OBJECT_TYPE = 100
+            if component.Type in [MODULE_TYPE, EXCEL_OBJECT_TYPE]:
                 # [START] obtain new_code
                 START_LINE_IDX = 1
                 last_line_idx = component.CodeModule.CountOfLines
