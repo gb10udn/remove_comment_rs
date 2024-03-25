@@ -2,9 +2,11 @@
 /dst_rmc
 /.vscode
 /.venv
+/.venv_pro
 /.ipynb_checkpoints
 /__pycache__
 /build
+/dist
 *.exe
 *.xlsm
 *.ipynb

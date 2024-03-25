@@ -1,3 +1,1 @@
-CALL .\.venv\Scripts\activate.bat
-pyinstaller vba.py --onefile
-PAUSE
+powershell.exe -ExecutionPolicy Bypass -File ".\build.ps1"
