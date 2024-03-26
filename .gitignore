@@ -8,7 +8,5 @@
 /build
 /dist
 *.exe
-*.xlsm
 *.ipynb
 *.spec
-!./misc/macro_sample_001.xlsm
