@@ -7,7 +7,7 @@ import rm
 
 
 class VbaHandler:
-    def __init__(self, src: str, *, is_visible=False):  # TODO: 240324 TEST と付いたプロシージャも削除するとよいかも？
+    def __init__(self, src: str, *, is_visible=False):  # EDIT: 240324 TEST と付いたプロシージャも削除するとよいかも？
         """
         マクロ付きエクセルブックの VBA を扱うためのクラス。
         特に、VBA モジュールの書き込み、削除を処理する。(Rust で処理実行できなかったため、Python の win32api を利用することにした。)

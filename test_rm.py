@@ -1,6 +1,8 @@
 import rm
 
-arg = '''Option Explicit
+
+def test_remove_unnecessary_comment():
+    vba_code = '''Option Explicit
 Sub PiyoPiyo()
     '
     ' docstring
@@ -9,8 +11,6 @@ Sub PiyoPiyo()
     ' comment !!!
 End Sub'''
 
-
-def test_remove_unnecessary_comment():
     expected = '''Option Explicit
 Sub PiyoPiyo()
     '
@@ -19,15 +19,53 @@ Sub PiyoPiyo()
     MsgBox "PiyoPiyo"
     ' comment !!!
 End Sub'''
-    result = rm.remove_unnecessary_comment(arg, remove_comments=['TEST:'])
+    result = rm.remove_unnecessary_comment(vba_code, remove_comments=['TEST:'])
     assert result == expected
 
 
 def test_remove_multiline_comment():
+    vba_code = '''Option Explicit
+Sub PiyoPiyo()
+    '
+    ' docstring
+    '
+    MsgBox "PiyoPiyo"  ' TEST: fugafuga ???
+    ' comment !!!
+End Sub'''
+
     expected = '''Option Explicit
 Sub PiyoPiyo()
     MsgBox "PiyoPiyo"  ' TEST: fugafuga ???
     ' comment !!!
 End Sub'''
-    result = rm.remove_multiline_comment(arg)
+    result = rm.remove_multiline_comment(vba_code)
+    assert result == expected
+
+
+def test_remove_test_sub_or_function():
+    vba_code = '''Option Explicit
+Sub PiyoPiyo()
+    '
+    ' docstring
+    '
+    MsgBox "PiyoPiyo"  ' TEST: fugafuga ???
+    ' comment !!!
+End Sub
+
+Sub TEST_PiyoPiyo()
+    MsgBox "this is excel macro test sub"
+End Sub'''
+
+    expected = '''Option Explicit
+Sub PiyoPiyo()
+    '
+    ' docstring
+    '
+    MsgBox "PiyoPiyo"  ' TEST: fugafuga ???
+    ' comment !!!
+End Sub
+
+'''
+
+    result = rm.remove_test_sub_or_function(vba_code)
     assert result == expected

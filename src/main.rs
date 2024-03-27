@@ -50,7 +50,7 @@ fn remove_comment_and_save(transfer_info: &TransferInfo, remove_comments: &Vec<S
             } else {
                 remove_multiline_comment_flag = "0";
             }
-            let output = Command::new("./vba.exe")
+            let output = Command::new("./vba.exe")  // TODO: 240326 vba はアドオン扱いにするといいかも？ (つまり、非存在時にアドオンが無いよ！的な表示をする。)
                 .args([
                     "--src",
                     &transfer_info.src as &str,

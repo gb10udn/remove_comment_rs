@@ -2,10 +2,15 @@ import re
 from dataclasses import dataclass
 
 
-def remove_unnecessary_comment(arg: str, *, remove_comments: list) -> str:
+def remove_unnecessary_comment(vba_code: str, *, remove_comments: list) -> str:
     pattern_str = '|'.join([r" *' *" + mark + '.*(?:\r?\n|$)' for mark in remove_comments])
     pattern_re = re.compile(pattern_str)
-    return pattern_re.sub('\n', arg)
+    return pattern_re.sub('\n', vba_code)
+
+
+def remove_test_sub_or_function(vba_code: str) -> str:
+    pattern = re.compile(r'((Public|Private) (Sub|Function) TEST_.+?End (Sub|Function))|((Sub|Function) TEST_.+?End (Sub|Function))', re.DOTALL)
+    return re.sub(pattern, '', vba_code)
 
 
 @dataclass
@@ -13,8 +18,8 @@ class CodeInfo:
     starts_with_single_quatation: bool
 
 
-def remove_multiline_comment(arg: str) -> str:
-    splited_arg = arg.split('\n')
+def remove_multiline_comment(vba_code: str) -> str:
+    splited_arg = vba_code.split('\n')
     code_info_list = []
     for idx, one_line in enumerate(splited_arg):
         one_line = one_line.replace(' ', '')

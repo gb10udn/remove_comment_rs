@@ -1,5 +1,5 @@
 Function CreatePythonExe() {
-    $hasPyProEnv = Test-Path ".venv_pro"
+    $hasPyProEnv = Test-Path ".venv_pro"  # FIXME: 240326 ".venv_pro" は任意に変更できるようにした方がいいかも？
     if ($hasPyProEnv -eq $false) {
         python -m venv .venv_pro
     }
@@ -7,7 +7,9 @@ Function CreatePythonExe() {
     .\.venv_pro\Scripts\activate
     python -m pip install --upgrade pip
     pip install -r .\requirements_pro.txt
-    pyinstaller vba.py --onefile    
+    pyinstaller vba.py --onefile
+
+    # TODO: 240326 生成に使ったファイルをまとめて削除してもいいかも？
 }
 
 
