@@ -8,7 +8,11 @@ def remove_unnecessary_comment(vba_code: str, *, remove_comments: list) -> str:
     return pattern_re.sub('\n', vba_code)
 
 
-def remove_test_sub_or_function(vba_code: str) -> str:
+def remove_test_code(vba_code: str) -> str:
+    """
+    TEST_ から始まる、Sub or Function を削除する。
+    (エクセルマクロで、TEST_ から始まるものは単体テストであるとして開発されていることが前提。)
+    """
     pattern = re.compile(r'((Public|Private) (Sub|Function) TEST_.+?End (Sub|Function))|((Sub|Function) TEST_.+?End (Sub|Function))', re.DOTALL)
     return re.sub(pattern, '', vba_code)
 

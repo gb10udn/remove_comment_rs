@@ -7,7 +7,7 @@ import rm
 
 
 class VbaHandler:
-    def __init__(self, src: str, *, is_visible=False):  # EDIT: 240324 TEST と付いたプロシージャも削除するとよいかも？
+    def __init__(self, src: str, *, is_visible=False):
         """
         マクロ付きエクセルブックの VBA を扱うためのクラス。
         特に、VBA モジュールの書き込み、削除を処理する。(Rust で処理実行できなかったため、Python の win32api を利用することにした。)
@@ -21,7 +21,7 @@ class VbaHandler:
         self.workbook = self.xl.Workbooks.Open(self.abs_src)
     
 
-    def update_vba_code_with_removed_unnecessary_comments(self, *, remove_comments: list, remove_multiline_comment: bool):
+    def update_vba_code_with_removed_unnecessary_comments(self, *, remove_comments: list, remove_multiline_comment: bool, remove_test_code: bool):
         for component in self.workbook.VBProject.VBComponents:
             MODULE_TYPE = 1
             EXCEL_OBJECT_TYPE = 100
@@ -34,6 +34,9 @@ class VbaHandler:
 
                 if remove_multiline_comment == True:
                     code = rm.remove_multiline_comment(code)
+
+                if remove_test_code == True:
+                    code = rm.remove_test_code(code)
                 # [END] obtain new_code
 
 
@@ -60,7 +63,7 @@ class VbaHandler:
 ####
         
 
-def update_vba_code_with_removed_unnecessary_comments(src: str, dst: str, *, remove_comments: list[str], remove_multiline_comment: bool=True, is_visible: bool=False) -> None:
+def update_vba_code_with_removed_unnecessary_comments(src: str, dst: str, *, remove_comments: list[str], remove_multiline_comment: bool=True, remove_test_code: bool=True, is_visible: bool=False) -> None:
     """
     マクロファイルから VBA モジュールを全削除して、.bas ファイル から読みだした VBA モジュールを埋め込んで保存する。
 
@@ -75,6 +78,12 @@ def update_vba_code_with_removed_unnecessary_comments(src: str, dst: str, *, rem
     remove_comments : list
         コメント削除の対象とする文字列。
 
+    remove_multiline_comment : bool (default : True)
+        複数行の連続コメント (docstring がこれにあたる想定) を削除するかどうか。
+
+    remove_test_code : bool (default = True)
+        Function or Sub において、TEST_ から始まるものを test_code と定義し、それを削除するかどうか。
+
     is_visible : bool (default = False)
         エクセル操作を見せるか。デバッグ中のみ、True にする想定。
 
@@ -83,28 +92,31 @@ def update_vba_code_with_removed_unnecessary_comments(src: str, dst: str, *, rem
     None
     """
     vba_handler = VbaHandler(src=src, is_visible=is_visible)
-    vba_handler.update_vba_code_with_removed_unnecessary_comments(remove_comments=remove_comments, remove_multiline_comment=remove_multiline_comment)
+    vba_handler.update_vba_code_with_removed_unnecessary_comments(remove_comments=remove_comments, remove_multiline_comment=remove_multiline_comment, remove_test_code=remove_test_code)
     vba_handler.save(dst=dst)
     vba_handler.quit()
 
 
 if __name__ == '__main__':  # TODO: 240313 パスワードロックかけるといいかも？ビルド作業の補助になりそう。(https://qiita.com/feo52/items/150745ae0cc17cb5c866)
     """
-    Ex. python ./vba.py --src "./misc/macro_sample_001.xlsm" --dst "./misc/macro_sample_001_editted.xlsm"
+    Ex. python ./vba.py --src "./misc/macro_sample_001.xlsm" --dst "./misc/macro_sample_001_editted.xlsm"  --remove-multiline-comment 1 --remove-excel-macro-test-code 1
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('--src', type=str, help='path of excel macro file')
     parser.add_argument('--dst', type=str, help='save path with macro with removed comment')
     parser.add_argument('--remove-multiline-comment', type=int)
+    parser.add_argument('--remove-excel-macro-test-code', type=int)
 
     args = parser.parse_args()
 
     assert args.src is not None, 'ArgError: args.src must not be None ...'
     assert args.dst is not None, 'ArgError: args.dst must not be None ...'
     assert args.remove_multiline_comment is not None, 'ArgError: args.remove_multiline_comment must not be None ...'
+    assert args.remove_excel_macro_test_code is not None, 'ArgError: args.remove_excel_macro_test_code must not be None ...'
 
     assert args.src != args.dst, f'DuplicateError: --src and --dst must NOT be same ... -> "{args.src}"'
     assert args.remove_multiline_comment in [0, 1], f'ArgError: --remove-multiline-comment must be 0 or 1, not {args.remove_multiline_comment}'
+    assert args.remove_excel_macro_test_code in [0, 1], f'ArgError: --remove-excel-macro-test-code must be 0 or 1, not {args.remove_multiline_comment}'
 
     try:
         CONFIG_PATH = './config.json'
@@ -125,4 +137,5 @@ if __name__ == '__main__':  # TODO: 240313 パスワードロックかけると�
         dst=args.dst,
         remove_comments=remove_comments,
         remove_multiline_comment=bool(args.remove_multiline_comment),
+        remove_test_code=bool(args.remove_excel_macro_test_code),
     )

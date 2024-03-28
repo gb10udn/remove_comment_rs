@@ -42,7 +42,7 @@ End Sub'''
     assert result == expected
 
 
-def test_remove_test_sub_or_function():
+def test_remove_test_code():
     vba_code = '''Option Explicit
 Sub PiyoPiyo()
     '
@@ -67,5 +67,5 @@ End Sub
 
 '''
 
-    result = rm.remove_test_sub_or_function(vba_code)
+    result = rm.remove_test_code(vba_code)
     assert result == expected

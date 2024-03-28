@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let transfer_info_vec = retrieve_transfer_info_vec(&src, &now, &config.copy_extensions);
     let mut error_messages: Vec<String> = vec![];
     for transfer_info in transfer_info_vec {  // TODO: 240324 並行 or 並列処理にする。(エラー取得も検討せよ)
-        if let Err(err) = remove_comment_and_save(&transfer_info,  &config.remove_comments, &config.remove_multiline_comment) {
+        if let Err(err) = remove_comment_and_save(&transfer_info,  &config.remove_comments, &config.remove_multiline_comment, &config.remove_excel_macro_test_code) {
             error_messages.push(err.to_string());
         }
     }
@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 
-fn remove_comment_and_save(transfer_info: &TransferInfo, remove_comments: &Vec<String>, remove_multiline_comment: &bool) -> Result<(), Box<dyn std::error::Error>> {
+fn remove_comment_and_save(transfer_info: &TransferInfo, remove_comments: &Vec<String>, remove_multiline_comment: &bool, remove_excel_macro_test_code: &bool) -> Result<(), Box<dyn std::error::Error>> {
     if transfer_info.proc_type != ProcType::Skip {
         if let Some(base_path) = Path::new(&transfer_info.dst).parent() {
             fs::create_dir_all(base_path).unwrap();
@@ -44,12 +44,6 @@ fn remove_comment_and_save(transfer_info: &TransferInfo, remove_comments: &Vec<S
 
     match transfer_info.proc_type {
         ProcType::Xlsm => {
-            let remove_multiline_comment_flag: &str;
-            if remove_multiline_comment == &true {
-                remove_multiline_comment_flag = "1";
-            } else {
-                remove_multiline_comment_flag = "0";
-            }
             let output = Command::new("./vba.exe")  // TODO: 240326 vba はアドオン扱いにするといいかも？ (つまり、非存在時にアドオンが無いよ！的な表示をする。)
                 .args([
                     "--src",
@@ -57,7 +51,10 @@ fn remove_comment_and_save(transfer_info: &TransferInfo, remove_comments: &Vec<S
                     "--dst",
                     transfer_info.dst.as_str(),
                     "--remove-multiline-comment",
-                    remove_multiline_comment_flag,
+                    convert_bool_to_str(remove_multiline_comment),
+                    "--remove-excel-macro-test-code",
+                    convert_bool_to_str(remove_excel_macro_test_code),
+                    
                 ])
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
@@ -176,10 +173,19 @@ fn obtain_proc_type(path: &Path, copy_extensions: &Vec<String>) -> ProcType {
     }
 }
 
+fn convert_bool_to_str(arg: &bool) -> &str {
+    if arg == &true {
+        "1"
+    } else {
+        "0"
+    }
+}
+
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Config {
     remove_multiline_comment: bool,
+    remove_excel_macro_test_code: bool,
     remove_comments: Vec<String>,
     copy_extensions: Vec<String>,
 }

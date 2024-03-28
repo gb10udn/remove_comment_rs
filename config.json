@@ -1,5 +1,6 @@
 {
     "remove_multiline_comment": true,
+    "remove_excel_macro_test_code": true,
     "remove_comments": ["TODO:", "FIXME:", "EDIT:", "HACK:", "INFO:", "[START]", "[END]"],
     "copy_extensions": ["txt", "json"]
 }
