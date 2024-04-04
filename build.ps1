@@ -1,5 +1,9 @@
+Param(
+    [int]$onlyPyBuild
+)
+
 Function CreatePythonExe() {
-    $hasPyProEnv = Test-Path ".venv_pro"  # FIXME: 240326 ".venv_pro" は任意に変更できるようにした方がいいかも？
+    $hasPyProEnv = Test-Path ".venv_pro"
     if ($hasPyProEnv -eq $false) {
         python -m venv .venv_pro
     }
@@ -10,7 +14,6 @@ Function CreatePythonExe() {
     pyinstaller vba.py --onefile
 
     # TODO: 240326 生成に使ったファイルをまとめて削除してもいいかも？
-    # TODO: 240329 pyinstaller のみ実行できるようにしてもいいかも？ (build_all.cmd or build_py.cmd みたいな。ps って、コマンド引数あったっけ？)
 }
 
 
@@ -26,9 +29,16 @@ Function CollectFiles() {
 }
 
 
-####
+# [START] main process
+if (($onlyPyBuild -eq 0) -Or ($onlyPyBuild -eq 1)) {
+    CreatePythonExe
+    if ($onlyPyBuild -eq 0) {
+        CreateRsExe
+        CollectFiles
+    }
+    Write-Host "\n\nFinished"
 
-
-CreatePythonExe
-CreateRsExe
-CollectFiles
+} else {
+    throw "ArgError: onlyPyBuild must be 0 or 1, not $onlyPyBuild"
+}
+# [END] main process
