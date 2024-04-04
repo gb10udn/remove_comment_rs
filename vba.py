@@ -97,7 +97,7 @@ def update_vba_code_with_removed_unnecessary_comments(src: str, dst: str, *, rem
     vba_handler.quit()
 
 
-if __name__ == '__main__':  # TODO: 240313 パスワードロックかけるといいかも？ビルド作業の補助になりそう。(https://qiita.com/feo52/items/150745ae0cc17cb5c866)
+if __name__ == '__main__':
     """
     Ex. python ./vba.py --src "./misc/macro_sample_001.xlsm" --dst "./misc/macro_sample_001_editted.xlsm"  --remove-multiline-comment 1 --remove-excel-macro-test-code 1
     """

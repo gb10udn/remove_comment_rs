@@ -10,6 +10,7 @@ Function CreatePythonExe() {
     pyinstaller vba.py --onefile
 
     # TODO: 240326 生成に使ったファイルをまとめて削除してもいいかも？
+    # TODO: 240329 pyinstaller のみ実行できるようにしてもいいかも？ (build_all.cmd or build_py.cmd みたいな。ps って、コマンド引数あったっけ？)
 }
 
 

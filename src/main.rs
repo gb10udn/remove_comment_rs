@@ -44,28 +44,33 @@ fn remove_comment_and_save(transfer_info: &TransferInfo, remove_comments: &Vec<S
 
     match transfer_info.proc_type {
         ProcType::Xlsm => {
-            let output = Command::new("./vba.exe")  // TODO: 240326 vba はアドオン扱いにするといいかも？ (つまり、非存在時にアドオンが無いよ！的な表示をする。)
-                .args([
-                    "--src",
-                    &transfer_info.src as &str,
-                    "--dst",
-                    transfer_info.dst.as_str(),
-                    "--remove-multiline-comment",
-                    convert_bool_to_str(remove_multiline_comment),
-                    "--remove-excel-macro-test-code",
-                    convert_bool_to_str(remove_excel_macro_test_code),
-                    
-                ])
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .output()
-                .expect("\n\nFailed to execute command\n\n");
+            const VBA_PATH: &str = "./vba.exe";
+            if Path::is_file(Path::new(VBA_PATH)) == true {
+                let output = Command::new(VBA_PATH)
+                    .args([
+                        "--src",
+                        &transfer_info.src as &str,
+                        "--dst",
+                        transfer_info.dst.as_str(),
+                        "--remove-multiline-comment",
+                        convert_bool_to_str(remove_multiline_comment),
+                        "--remove-excel-macro-test-code",
+                        convert_bool_to_str(remove_excel_macro_test_code),
+                        
+                    ])
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .output()
+                    .expect("\n\nFailed to execute command\n\n");
 
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            if stderr != "" {
-                Err(stderr.into())
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                if stderr != "" {
+                    Err(stderr.into())
+                } else {
+                    Ok(())
+                }
             } else {
-                Ok(())
+                Err(format!("Error: File NOT FOUND -> {}", VBA_PATH).into())
             }
         },
         ProcType::Py => {
