@@ -2,7 +2,6 @@ use std::io::{Write, BufReader};
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use chrono::Local;
 use walkdir::WalkDir;
 use clap::Parser;
 use serde::{Deserialize, Serialize};
@@ -16,8 +15,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let src = args.src.expect("\n\nArgError: src must be given ...\n\n");
     let config = open_config("./config.json")?;
 
-    let now = Local::now().format("%Y%m%d_%H%M%S").to_string();
-    let transfer_info_vec = retrieve_transfer_info_vec(&src, &now, &config.copy_extensions);
+    if Path::new(&config.dst).exists() == true {
+        panic!("\n\n{}\n\n", format!("❌ Error: already existed -> {:?}. Try again after removing this dir (to avoid to overwrite)", &config.dst));
+    }
+
+    let transfer_info_vec = retrieve_transfer_info_vec(&src, &config.dst, &config.copy_extensions);
     let mut error_messages: Vec<String> = vec![];
     for transfer_info in transfer_info_vec {  // TODO: 240324 並行 or 並列処理にする。(エラー取得も検討せよ)
         if let Err(err) = remove_comment_and_save(&transfer_info,  &config.remove_comments, &config.remove_multiline_comment, &config.remove_excel_macro_test_code) {
@@ -121,11 +123,9 @@ enum ProcType {
 }
 
 /// src がディレクトリの場合は再帰的に検索、ファイルパスの場合はその値を持った TransferInfo のベクタ型を返す関数。
-fn retrieve_transfer_info_vec(src: &String, folder_name: &String, copy_extensions: &Vec<String>) -> Vec<TransferInfo> {
+fn retrieve_transfer_info_vec(src: &String, dst_dir: &String, copy_extensions: &Vec<String>) -> Vec<TransferInfo> {
     let src = Path::new(&src);
-
-    let mut temp_dst = PathBuf::from(r".\dst_rmc");
-    temp_dst.push(folder_name);
+    let mut temp_dst = PathBuf::from(dst_dir);
 
     let mut result: Vec<TransferInfo> = vec![];
     if src.is_file() {
@@ -189,6 +189,7 @@ fn convert_bool_to_str(arg: &bool) -> &str {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Config {
+    dst: String,
     remove_multiline_comment: bool,
     remove_excel_macro_test_code: bool,
     remove_comments: Vec<String>,
@@ -224,10 +225,10 @@ mod tests {
         let src = r".\misc";
         let copy_extensions = vec![String::from("py")];
         let expected = vec![
-            TransferInfo { src: String::from(r".\misc\piyo\sample_002.py"), dst: String::from(r".\dst_rmc\test\piyo\sample_002.py"), proc_type: ProcType::Py },
-            TransferInfo { src: String::from(r".\misc\sample_001.py"),      dst: String::from(r".\dst_rmc\test\sample_001.py")     , proc_type: ProcType::Py },
+            TransferInfo { src: String::from(r".\misc\piyo\sample_002.py"), dst: String::from(r".\dst_rmc\piyo\sample_002.py"), proc_type: ProcType::Py },
+            TransferInfo { src: String::from(r".\misc\sample_001.py"),      dst: String::from(r".\dst_rmc\sample_001.py")     , proc_type: ProcType::Py },
         ];
-        let temp_result = retrieve_transfer_info_vec(&src.to_string(), &String::from("test"), &copy_extensions);
+        let temp_result = retrieve_transfer_info_vec(&src.to_string(), &String::from(r".\dst_rmc"), &copy_extensions);
         let mut result = vec![];
         for res in temp_result {
             if res.proc_type == ProcType::Py {
