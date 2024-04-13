@@ -2,7 +2,7 @@ use std::io::{Write, BufReader};
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use walkdir::WalkDir;
+use walkdir::{WalkDir, DirEntry};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 
@@ -138,7 +138,7 @@ fn retrieve_transfer_info_vec(src: &String, dst_dir: &String, copy_extensions: &
         });
     } else {
         let dst_base_dir = temp_dst.to_string_lossy().to_string();
-        for entry in WalkDir::new(src) {
+        for entry in WalkDir::new(src).into_iter().filter_entry(|f| !is_hidden(f)) {
             if let Ok(val) = entry {
                 if val.path().is_file() {
                     let fpath = val.path().to_string_lossy().to_string();
@@ -154,6 +154,13 @@ fn retrieve_transfer_info_vec(src: &String, dst_dir: &String, copy_extensions: &
         }
     }
     result
+}
+
+fn is_hidden(entry: &DirEntry) -> bool {
+    entry.file_name()
+        .to_str()
+        .map(|s| s.starts_with("."))
+        .unwrap_or(false)
 }
 
 
