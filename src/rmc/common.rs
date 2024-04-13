@@ -5,7 +5,7 @@ use regex::Regex;
 pub fn remove_comment(src: &String, targets: &Vec<String>, comment_marker: &str) -> String {
     let pattern = targets
         .iter()
-        .map(|keyword| format!(r"\s*?{}\s*?{}.*", comment_marker, keyword))
+        .map(|keyword| format!(r"\s*?{}\s*?{}.*", comment_marker, keyword).replace("[", r"\[").replace("]", r"\]"))  // INFO: 240413 square brackets ([]) needs to escape (\).
         .collect::<Vec<String>>()
         .join("|");
     let re = Regex::new(&pattern).unwrap();

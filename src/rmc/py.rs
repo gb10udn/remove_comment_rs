@@ -20,8 +20,10 @@ mod tests {
 
         let src = r#"
             import os
+            # [START] ここからテスト
             print('始めるよ！')  # TODO: Fix this issue
             os.path.basename("hoge")  # FIXME: Address this problem
+            # [END] ここからテスト
         "#;
 
         let dst = r#"
@@ -30,7 +32,14 @@ mod tests {
             os.path.basename("hoge")
         "#;
 
-        assert_eq!(remove_comment(&src.to_string(), &vec![String::from("TODO:"), String::from("FIXME:")]), dst.to_string());
+        let targets = vec![
+            String::from("TODO:"),
+            String::from("FIXME:"),
+            String::from("[START]"),
+            String::from("[END]"),
+        ];
+
+        assert_eq!(remove_comment(&src.to_string(), &targets), dst.to_string());
     }
 
     #[test]
