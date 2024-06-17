@@ -135,22 +135,22 @@ def update_vba_code_with_removed_unnecessary_comments(src: str, dst: str, *, rem
     vba_handler.quit()
 
 
-def set_logging():
+def set_logging(dst_dir: str='./log_py'):
     stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.WARNING)  # INFO: 240420 (ログファイルより) よく見る箇所なので、不要なものは出さなくて良い気がする。
+    stream_handler.setLevel(logging.WARNING)
 
     now = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    log_path = f'./log/{now}.log'
+    log_path = f'{dst_dir}/{now}.log'
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
     file_handler = logging.FileHandler(log_path, encoding='utf-8')
-    file_handler.setLevel(logging.DEBUG)  # INFO: 240420 このように設定すると、各ハンドラでレベルを分けれる。
+    file_handler.setLevel(logging.DEBUG)
 
     logging.basicConfig(
         format='%(asctime)s\t%(levelname)s\t%(name)s\t%(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
-        handlers=[stream_handler, file_handler],  # INFO: 240420 handlers で設定すると複数のハンドラを設定できる。
-        level=logging.DEBUG,                      # INFO: 240420 全体の設定。個別設定の handeler よりも下げる。(Ex. 全体設定が WARNING であれば、個別設定で DEBUG としても表示されない。)
+        handlers=[stream_handler, file_handler],
+        level=logging.DEBUG,
     )
 
 
