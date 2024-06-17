@@ -3,5 +3,6 @@ pywin32 == 306
 
 mypy
 types-pywin32
+types-psutil
 pytest
 jupyter

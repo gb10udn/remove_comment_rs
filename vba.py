@@ -1,9 +1,13 @@
+import rm
+
 import win32com.client
 import os
 import json
 from typing import Any
+import ctypes
+import psutil
 import argparse
-import rm
+import struct
 
 
 class VbaHandler:
@@ -12,6 +16,8 @@ class VbaHandler:
         マクロ付きエクセルブックの VBA を扱うためのクラス。
         特に、VBA モジュールの書き込み、削除を処理する。(Rust で処理実行できなかったため、Python の win32api を利用することにした。)
         """
+        assert self._is_64bit_excel == self._is_64bit_excel, f'BitNumError: Excel is 64bit -> {self._is_64bit_excel}, Python is 64 bit -> {self._is_64bit_excel}'
+
         ext = os.path.splitext(src)[-1]
         assert ext == '.xlsm', f'ArgError: extension of "src" must be ".xlsm", not {ext}'
 
@@ -58,6 +64,34 @@ class VbaHandler:
     def quit(self):
         self.workbook.Close()
         self.xl.Quit()
+
+    
+    @property
+    def _is_64bit_excel(self) -> bool:
+        pid = self._obtain_excel_pid()
+        if pid is None:
+            return None
+        
+        process = psutil.Process(pid)
+        if hasattr(process, 'as_dict'):
+            handle = ctypes.windll.kernel32.OpenProcess(1, False, pid)
+            is_wow64 = ctypes.c_bool(False)
+            ctypes.windll.kernel32.IsWow64Process(handle, ctypes.byref(is_wow64))
+            return not is_wow64.value
+        else:
+            return False
+        
+
+    def _obtain_excel_pid(self) -> int:
+        hwnd = self.xl.Hwnd
+        pid = ctypes.c_ulong()
+        ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        return pid.value
+    
+
+    @property
+    def _is_64bit_python(self) -> bool:
+        return struct.calcsize("P") * 8 == 64
 
 
 ####

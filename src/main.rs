@@ -123,7 +123,7 @@ enum ProcType {
 }
 
 /// src がディレクトリの場合は再帰的に検索、ファイルパスの場合はその値を持った TransferInfo のベクタ型を返す関数。
-fn retrieve_transfer_info_vec(src: &String, dst_dir: &String, copy_extensions: &Vec<String>) -> Vec<TransferInfo> {
+fn retrieve_transfer_info_vec(src: &String, dst_dir: &String, copy_extensions: &Vec<String>) -> Vec<TransferInfo> {  // TODO: 240413 除外するパスを指定するといいかも？
     let src = Path::new(&src);
     let mut temp_dst = PathBuf::from(dst_dir);
 
