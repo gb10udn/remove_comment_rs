@@ -1,6 +1,8 @@
 import rm
 
 import win32com.client
+import traceback
+
 import os
 import json
 from typing import Any
@@ -8,6 +10,8 @@ import ctypes
 import psutil
 import argparse
 import struct
+import logging
+import datetime
 
 
 class VbaHandler:
@@ -131,10 +135,32 @@ def update_vba_code_with_removed_unnecessary_comments(src: str, dst: str, *, rem
     vba_handler.quit()
 
 
+def set_logging():
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.WARNING)  # INFO: 240420 (ログファイルより) よく見る箇所なので、不要なものは出さなくて良い気がする。
+
+    now = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    log_path = f'./log/{now}.log'
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+
+    file_handler = logging.FileHandler(log_path, encoding='utf-8')
+    file_handler.setLevel(logging.DEBUG)  # INFO: 240420 このように設定すると、各ハンドラでレベルを分けれる。
+
+    logging.basicConfig(
+        format='%(asctime)s\t%(levelname)s\t%(name)s\t%(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[stream_handler, file_handler],  # INFO: 240420 handlers で設定すると複数のハンドラを設定できる。
+        level=logging.DEBUG,                      # INFO: 240420 全体の設定。個別設定の handeler よりも下げる。(Ex. 全体設定が WARNING であれば、個別設定で DEBUG としても表示されない。)
+    )
+
+
 if __name__ == '__main__':
     """
     Ex. python ./vba.py --src "./misc/macro_sample_001.xlsm" --dst "./misc/macro_sample_001_editted.xlsm"  --remove-multiline-comment 1 --remove-excel-macro-test-code 1
     """
+    set_logging()
+    logger = logging.getLogger(__name__)
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--src', type=str, help='path of excel macro file')
     parser.add_argument('--dst', type=str, help='save path with macro with removed comment')
@@ -142,15 +168,21 @@ if __name__ == '__main__':
     parser.add_argument('--remove-excel-macro-test-code', type=int)
 
     args = parser.parse_args()
+    logger.debug(args)
 
-    assert args.src is not None, 'ArgError: args.src must not be None ...'
-    assert args.dst is not None, 'ArgError: args.dst must not be None ...'
-    assert args.remove_multiline_comment is not None, 'ArgError: args.remove_multiline_comment must not be None ...'
-    assert args.remove_excel_macro_test_code is not None, 'ArgError: args.remove_excel_macro_test_code must not be None ...'
+    try:
+        assert args.src is not None, 'ArgError: args.src must not be None ...'
+        assert args.dst is not None, 'ArgError: args.dst must not be None ...'
+        assert args.remove_multiline_comment is not None, 'ArgError: args.remove_multiline_comment must not be None ...'
+        assert args.remove_excel_macro_test_code is not None, 'ArgError: args.remove_excel_macro_test_code must not be None ...'
 
-    assert args.src != args.dst, f'DuplicateError: --src and --dst must NOT be same ... -> "{args.src}"'
-    assert args.remove_multiline_comment in [0, 1], f'ArgError: --remove-multiline-comment must be 0 or 1, not {args.remove_multiline_comment}'
-    assert args.remove_excel_macro_test_code in [0, 1], f'ArgError: --remove-excel-macro-test-code must be 0 or 1, not {args.remove_multiline_comment}'
+        assert args.src != args.dst, f'DuplicateError: --src and --dst must NOT be same ... -> "{args.src}"'
+        assert args.remove_multiline_comment in [0, 1], f'ArgError: --remove-multiline-comment must be 0 or 1, not {args.remove_multiline_comment}'
+        assert args.remove_excel_macro_test_code in [0, 1], f'ArgError: --remove-excel-macro-test-code must be 0 or 1, not {args.remove_multiline_comment}'
+    
+    except AssertionError as err:
+        logger.debug(err)
+        raise Exception(err)
 
     try:
         CONFIG_PATH = './config.json'
@@ -160,16 +192,26 @@ if __name__ == '__main__':
         remove_comments = config[CONFIG_KEY]
     
     except FileNotFoundError:
-        raise Exception(f'FileNotFoundError: CONFIG_PATH -> {CONFIG_PATH}')
+        message = f'FileNotFoundError: CONFIG_PATH -> {CONFIG_PATH}'
+        logger.warning(message)
+        raise Exception(message)
     except KeyError:
-        raise Exception(f'KeyError: CONFIG_KEY -> {CONFIG_KEY}')
-    except:
-        raise Exception('InternalError: unknown type of error ...')
+        message = f'KeyError: CONFIG_KEY -> {CONFIG_KEY}'
+        logger.warning(message)
+        raise Exception(message)
+    except Exception as err:
+        detail_message = ''.join(traceback.TracebackException.from_exception(err).format())
+        logger.warning(detail_message)
+        raise Exception(detail_message)
 
-    update_vba_code_with_removed_unnecessary_comments(
-        src=args.src,
-        dst=args.dst,
-        remove_comments=remove_comments,
-        remove_multiline_comment=bool(args.remove_multiline_comment),
-        remove_test_code=bool(args.remove_excel_macro_test_code),
-    )
+    try:
+        update_vba_code_with_removed_unnecessary_comments(
+            src=args.src,
+            dst=args.dst,
+            remove_comments=remove_comments,
+            remove_multiline_comment=bool(args.remove_multiline_comment),
+            remove_test_code=bool(args.remove_excel_macro_test_code),
+        )
+    except Exception as err:
+        detail_message = ''.join(traceback.TracebackException.from_exception(err).format())
+        logger.warning(detail_message)

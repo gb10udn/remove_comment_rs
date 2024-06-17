@@ -1,2 +1,3 @@
 pyinstaller == 6.5.0
 pywin32 == 306
+traceback

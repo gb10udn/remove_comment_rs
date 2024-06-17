@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = open_config("./config.json")?;
 
     if Path::new(&config.dst).exists() == true {
-        panic!("\n\n{}\n\n", format!("❌ Error: already existed -> {:?}. Try again after removing this dir (to avoid to overwrite)", &config.dst));
+        panic!("\n\n{}\n\n", format!("Error: already existed -> {:?}. Try again after removing this dir (to avoid to overwrite)", &config.dst));
     }
 
     let transfer_info_vec = retrieve_transfer_info_vec(&src, &config.dst, &config.copy_extensions);
