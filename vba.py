@@ -6,22 +6,17 @@ import traceback
 import os
 import json
 from typing import Any
-import ctypes
-import psutil
 import argparse
-import struct
 import logging
 import datetime
 
 
 class VbaHandler:
-    def __init__(self, src: str, *, is_visible=False):
+    def __init__(self, src: str, *, is_visible: bool=False):
         """
         マクロ付きエクセルブックの VBA を扱うためのクラス。
         特に、VBA モジュールの書き込み、削除を処理する。(Rust で処理実行できなかったため、Python の win32api を利用することにした。)
         """
-        assert self._is_64bit_excel == self._is_64bit_excel, f'BitNumError: Excel is 64bit -> {self._is_64bit_excel}, Python is 64 bit -> {self._is_64bit_excel}'
-
         ext = os.path.splitext(src)[-1]
         assert ext == '.xlsm', f'ArgError: extension of "src" must be ".xlsm", not {ext}'
 
@@ -31,32 +26,33 @@ class VbaHandler:
         self.workbook = self.xl.Workbooks.Open(self.abs_src)
     
 
-    def update_vba_code_with_removed_unnecessary_comments(self, *, remove_comments: list, remove_multiline_comment: bool, remove_test_code: bool):
+    def update_vba_code_with_removed_unnecessary_comments(self, *, remove_comments: list, remove_multiline_comment: bool, remove_test_code: bool) -> None:
         for component in self.workbook.VBProject.VBComponents:
             MODULE_TYPE = 1
             EXCEL_OBJECT_TYPE = 100
             if component.Type in [MODULE_TYPE, EXCEL_OBJECT_TYPE]:
-                # [START] obtain new_code
                 START_LINE_IDX = 1
                 last_line_idx = component.CodeModule.CountOfLines
-                code = component.CodeModule.Lines(START_LINE_IDX, last_line_idx)
-                code = rm.remove_unnecessary_comment(code, remove_comments=remove_comments)
+                if last_line_idx > START_LINE_IDX:
+                    # [START] obtain new_code
+                    code = component.CodeModule.Lines(START_LINE_IDX, last_line_idx)
+                    code = rm.remove_unnecessary_comment(code, remove_comments=remove_comments)
 
-                if remove_multiline_comment == True:
-                    code = rm.remove_multiline_comment(code)
+                    if remove_multiline_comment == True:
+                        code = rm.remove_multiline_comment(code)
 
-                if remove_test_code == True:
-                    code = rm.remove_test_code(code)
-                # [END] obtain new_code
+                    if remove_test_code == True:
+                        code = rm.remove_test_code(code)
+                    # [END] obtain new_code
 
 
-                # [START] update new code
-                component.CodeModule.DeleteLines(START_LINE_IDX, last_line_idx)
-                component.CodeModule.AddFromString(code)
-                # [END] update new code
+                    # [START] update new code
+                    component.CodeModule.DeleteLines(START_LINE_IDX, last_line_idx)
+                    component.CodeModule.AddFromString(code)
+                    # [END] update new code
     
 
-    def save(self, dst: str):
+    def save(self, dst: str) -> None:
         dst_abs = os.path.abspath(dst)  # INFO: 240310 win32api may force to use abs path
         assert self.abs_src != dst_abs,  f'OverWriteWarning: "src" must NOT be same with "dst". "src" / "dst" -> {self.abs_src}'
         assert os.path.exists(dst_abs) == False, f'OverWriteWarning: "dst" is already existed. dst -> {dst_abs}'
@@ -65,37 +61,9 @@ class VbaHandler:
         self.workbook.SaveAs(dst_abs, FileFormat=XL_OPEN_XML_WORKBOOK_MACRO_ENABLED)
 
 
-    def quit(self):
+    def quit(self) -> None:
         self.workbook.Close()
         self.xl.Quit()
-
-    
-    @property
-    def _is_64bit_excel(self) -> bool:
-        pid = self._obtain_excel_pid()
-        if pid is None:
-            return None
-        
-        process = psutil.Process(pid)
-        if hasattr(process, 'as_dict'):
-            handle = ctypes.windll.kernel32.OpenProcess(1, False, pid)
-            is_wow64 = ctypes.c_bool(False)
-            ctypes.windll.kernel32.IsWow64Process(handle, ctypes.byref(is_wow64))
-            return not is_wow64.value
-        else:
-            return False
-        
-
-    def _obtain_excel_pid(self) -> int:
-        hwnd = self.xl.Hwnd
-        pid = ctypes.c_ulong()
-        ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-        return pid.value
-    
-
-    @property
-    def _is_64bit_python(self) -> bool:
-        return struct.calcsize("P") * 8 == 64
 
 
 ####
@@ -135,7 +103,7 @@ def update_vba_code_with_removed_unnecessary_comments(src: str, dst: str, *, rem
     vba_handler.quit()
 
 
-def set_logging(dst_dir: str='./log_py'):
+def set_logging(dst_dir: str='./log_py') -> None:
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(logging.WARNING)
 

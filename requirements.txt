@@ -3,6 +3,7 @@ pywin32 == 306
 traceback
 
 mypy
+lxml
 types-pywin32
 types-psutil
 pytest
